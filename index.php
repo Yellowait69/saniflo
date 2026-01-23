@@ -1,4 +1,35 @@
-<?php require 'db.php'; ?>
+<?php
+require 'db.php';
+
+// --- TRAITEMENT DU FORMULAIRE DE CONTACT ---
+$message_status = ''; // Pour stocker le message de succès ou d'erreur
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Nettoyage des entrées (Sécurité)
+    $nom = htmlspecialchars(strip_tags(trim($_POST['nom'])));
+    $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
+    $tel = htmlspecialchars(strip_tags(trim($_POST['tel'])));
+    $message = htmlspecialchars(strip_tags(trim($_POST['message'])));
+
+    // Validation basique
+    if (!empty($nom) && !empty($email) && !empty($message) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+
+        // EXEMPLE : Envoi d'email (à configurer sur un serveur réel)
+        $to = "info@saniflo.be";
+        $subject = "Nouveau message de $nom via le site web";
+        $headers = "From: $email" . "\r\n" .
+            "Reply-To: $email" . "\r\n" .
+            "X-Mailer: PHP/" . phpversion();
+
+        // Simuler l'envoi (décommenter la ligne mail() sur un vrai serveur)
+        // mail($to, $subject, "Tél: $tel\n\nMessage:\n$message", $headers);
+
+        $message_status = '<div class="alert success">Merci ! Votre message a bien été envoyé. Nous vous recontacterons rapidement.</div>';
+    } else {
+        $message_status = '<div class="alert error">Veuillez remplir correctement tous les champs obligatoires.</div>';
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -9,6 +40,14 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* CSS Ajouté pour les messages d'alerte */
+        .alert { padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        /* Ajustement image équipe pour qu'elle remplisse le cercle */
+        .team-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    </style>
 </head>
 <body>
 
@@ -67,9 +106,19 @@
                 try {
                     $stmt = $pdo->query("SELECT * FROM team");
                     while ($member = $stmt->fetch()) {
+                        // LOGIQUE POUR LES IMAGES : On détecte le nom pour afficher la bonne photo
+                        $name = $member['name'];
+                        $imgHtml = '<i class="fas fa-user-tie"></i>'; // Par défaut
+
+                        // Recherche de "Florence" ou "Jean" dans le nom (insensible à la casse)
+                        if (stripos($name, 'Florence') !== false) {
+                            $imgHtml = '<img src="img/Florence.jpg" alt="Florence Lambinon">';
+                        } elseif (stripos($name, 'Jean') !== false || stripos($name, 'JF') !== false) {
+                            $imgHtml = '<img src="img/JF.jpg" alt="Jean-François Dengis">';
+                        }
+
                         echo '<div class="team-card">';
-                        // Placeholder image si pas d'image réelle
-                        echo '<div class="team-img"><i class="fas fa-user-tie"></i></div>';
+                        echo '<div class="team-img">' . $imgHtml . '</div>';
                         echo '<div class="team-info">';
                         echo '<h4>' . htmlspecialchars($member['name']) . '</h4>';
                         echo '<span class="role">' . htmlspecialchars($member['role']) . '</span>';
@@ -106,7 +155,8 @@
                         echo '</div>';
                     }
                 } else {
-                    echo '<p>Mise à jour des services en cours...</p>';
+                    // Fallback propre si pas de services en DB
+                    echo '<p style="text-align:center; width:100%;">Nos services incluent : Installation chaudières, Pompes à chaleur, Adoucisseurs d\'eau et Sanitaires complets.</p>';
                 }
             } catch (Exception $e) {
                 echo '<p>Erreur de chargement des services.</p>';
@@ -118,27 +168,50 @@
 
 <section id="agrements" class="bg-blue">
     <div class="container">
-        <div class="section-title white-title">
-            <h2>Nos Agréments & Certifications</h2>
-            <p>L'assurance d'un travail aux normes et sécurisé</p>
+        <div class="section-title white-title text-center compact-title">
+            <h2>Agréments & Certifications</h2>
+            <p>L'assurance d'un travail aux normes.</p>
         </div>
 
-        <div class="cert-grid">
-            <?php
-            try {
-                $stmt = $pdo->query("SELECT * FROM certifications ORDER BY region");
-                while ($cert = $stmt->fetch()) {
-                    echo '<div class="cert-item">';
-                    echo '<span class="region-tag">' . htmlspecialchars($cert['region']) . '</span>';
-                    echo '<h4>' . htmlspecialchars($cert['title']) . '</h4>';
-                    echo '<p class="cert-number">' . htmlspecialchars($cert['number']) . '</p>';
+        <?php
+        try {
+            // Requête SQL (inchangée)
+            $sql = "SELECT * FROM certifications 
+                    ORDER BY FIELD(region, 'Général', 'Wallonie', 'Flandre', 'Bruxelles'), 
+                    title ASC";
+            $stmt = $pdo->query($sql);
+            $certifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (count($certifications) > 0) {
+                // Regroupement (inchangé)
+                $groupes = [];
+                foreach ($certifications as $cert) {
+                    $groupes[$cert['region']][] = $cert;
+                }
+
+                // Affichage
+                foreach ($groupes as $regionName => $certsInRegion) {
+                    // Titre de séparation stylisé
+                    echo '<h3 class="region-separator"><span>' . htmlspecialchars($regionName) . '</span></h3>';
+
+                    echo '<div class="cert-grid-compact">'; // Nouvelle classe CSS pour la grille
+
+                    foreach ($certsInRegion as $cert) {
+                        echo '
+                        <div class="cert-item-sleek"> <div class="cert-content">
+                                <h4>' . htmlspecialchars($cert['title']) . '</h4>
+                                <p class="cert-number">' . htmlspecialchars($cert['number']) . '</p>
+                            </div>
+                        </div>';
+                    }
                     echo '</div>';
                 }
-            } catch (Exception $e) {
-                echo '<p>Info agréments indisponible.</p>';
+
+            } else {
+                echo '<p class="no-data">Aucune certification.</p>';
             }
-            ?>
-        </div>
+        } catch (Exception $e) { echo '<div class="alert">Erreur chargement.</div>'; }
+        ?>
     </div>
 </section>
 
@@ -184,18 +257,20 @@
             </div>
 
             <div class="contact-form">
-                <form action="" method="POST">
+                <?php echo $message_status; ?>
+
+                <form action="index.php#contact" method="POST">
                     <div class="form-group">
-                        <input type="text" name="nom" placeholder="Votre Nom" required>
+                        <input type="text" name="nom" placeholder="Votre Nom" required value="<?php echo isset($_POST['nom']) ? htmlspecialchars($_POST['nom']) : ''; ?>">
                     </div>
                     <div class="form-group">
-                        <input type="email" name="email" placeholder="Votre Email" required>
+                        <input type="email" name="email" placeholder="Votre Email" required value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
                     </div>
                     <div class="form-group">
-                        <input type="tel" name="tel" placeholder="Votre Téléphone">
+                        <input type="tel" name="tel" placeholder="Votre Téléphone" value="<?php echo isset($_POST['tel']) ? htmlspecialchars($_POST['tel']) : ''; ?>">
                     </div>
                     <div class="form-group">
-                        <textarea name="message" rows="5" placeholder="Comment pouvons-nous vous aider ?" required></textarea>
+                        <textarea name="message" rows="5" placeholder="Comment pouvons-nous vous aider ?" required><?php echo isset($_POST['message']) ? htmlspecialchars($_POST['message']) : ''; ?></textarea>
                     </div>
                     <button type="submit" class="btn-primary full-width">Envoyer ma demande</button>
                 </form>
@@ -212,7 +287,6 @@
 </footer>
 
 <script>
-    // Petit script pour le menu burger mobile
     document.querySelector('.burger').addEventListener('click', () => {
         document.querySelector('.nav-links').classList.toggle('active');
     });

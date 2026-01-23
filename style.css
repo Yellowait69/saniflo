@@ -103,3 +103,103 @@ footer p { opacity: 0.6; margin-bottom: 5px; }
     .burger { display: block; }
     .hero-buttons { flex-direction: column; }
 }
+
+/* --- Section Agréments --- */
+.bg-blue {
+    background-color: #1a237e; /* Un bleu nuit profond (ajuste selon ta charte) */
+    color: #fff;
+    padding: 60px 0;
+}
+
+.white-title h2 {
+    color: #fff;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.white-title p {
+    color: #cfd8dc; /* Gris très clair pour le sous-titre */
+    margin-bottom: 40px;
+}
+
+/* Grille Responsive */
+.cert-grid {
+    display: grid;
+    /* Crée des colonnes automatiques : minimum 280px de large, sinon partage l'espace */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    padding: 20px 0;
+}
+
+/* Design de la Carte */
+.cert-item {
+    background-color: rgba(255, 255, 255, 0.1); /* Effet "verre" légèrement transparent */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 25px 20px;
+    position: relative; /* Nécessaire pour placer le tag en absolu */
+    transition: transform 0.3s ease, background 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.cert-item:hover {
+    transform: translateY(-5px); /* Légère remontée au survol */
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* L'étiquette Jaune (Région) */
+.region-tag {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background-color: #ffc107; /* Jaune standard */
+    color: #000;
+    font-weight: bold;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Typographie de la carte */
+.cert-content h4 {
+    margin-top: 20px; /* Espace pour ne pas chevaucher le tag */
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.4;
+    margin-bottom: 10px;
+    color: #fff;
+}
+
+.cert-number {
+    font-family: 'Courier New', monospace; /* Style un peu technique pour le numéro */
+    color: #ffc107; /* Rappel du jaune pour le numéro */
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+/* Fallback message */
+.no-data {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-style: italic;
+    opacity: 0.7;
+}
+
+/* Titre de séparation des régions */
+.region-separator {
+    color: #ffc107; /* Jaune pour bien ressortir sur le bleu */
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-top: 40px;    /* Espace au dessus */
+    margin-bottom: 20px; /* Espace en dessous avant les cartes */
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1); /* Une ligne subtile sous le titre */
+    padding-bottom: 10px;
+}
+
+/* Optionnel : Supprimer la marge du tout premier titre pour qu'il ne soit pas trop loin du H2 */
+.region-separator:first-child {
+    margin-top: 10px;
+}
