@@ -1,13 +1,12 @@
 <?php
-// db.php
-$host = '127.0.0.1';
-$port = '3307';      // Port MySQL de XAMPP
-$db   = 'saniflo_db';
-$user = 'root';
-$pass = '';
+// config/db.php - Version Alwaysdata
+$host = 'mysql-saniflo-demo.alwaysdata.net'; // REMPLACEZ par l'hôte indiqué dans votre panel MySQL
+$db   = 'saniflo-demo_saniflo_db';       // Le nom exact de la base créée
+$user = 'saniflo-demo_saniflo_user';     // Votre utilisateur MySQL
+$pass = 'Maxpanpan02'; // Le mot de passe choisi
 $charset = 'utf8mb4';
 
-$dsn = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
+$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
 
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,

@@ -14,18 +14,14 @@ DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
                          `id` int(11) NOT NULL AUTO_INCREMENT,
                          `username` varchar(50) NOT NULL,
-                         `password` varchar(255) NOT NULL, -- Doit contenir le hash (ex: password_hash en PHP)
+                         `password` varchar(255) NOT NULL,
                          `email` varchar(100) DEFAULT NULL,
                          `created_at` datetime DEFAULT current_timestamp(),
                          PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Données : Ajout de l'admin par défaut
--- ATTENTION : Le mot de passe ci-dessous est le hash de "admin123" (généré via password_hash)
--- Tu devras créer un script PHP pour changer ce mot de passe plus tard.
 INSERT INTO `users` (`username`, `password`, `email`) VALUES
     ('Jean-François', '$2y$10$8.w.1/5.6.7.8.9.0.1.2.3.4.5.6.7.8.9.0.1.2.3.4.5.6', 'info@saniflo.be');
--- Note: Remplace le hash ci-dessus par un vrai hash généré par ton code PHP.
 
 -- ========================================================
 -- 3. Table : SERVICES
@@ -36,12 +32,11 @@ CREATE TABLE `services` (
                             `id` int(11) NOT NULL AUTO_INCREMENT,
                             `title` varchar(100) NOT NULL,
                             `description` text NOT NULL,
-                            `icon` varchar(50) NOT NULL, -- Classe CSS (ex: fa-fire)
-                            `display_order` int(11) DEFAULT 0, -- Pour trier l'ordre d'affichage
+                            `icon` varchar(50) NOT NULL,
+                            `display_order` int(11) DEFAULT 0,
                             PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Données Services
 INSERT INTO `services` (`title`, `description`, `icon`) VALUES
                                                             ('Chauffage & Énergie', 'Installations de chauffage, chauffe-eau solaire ou pompe à chaleur Viessmann assurant un excellent rendement. Garantie de 10 ans sur installations entretenues.', 'fa-fire'),
                                                             ('Adoucisseur d\'eau', 'Le calcaire est un isolant qui augmente votre consommation. Nos adoucisseurs protègent vos installations et électroménagers.', 'fa-tint'),
@@ -62,7 +57,6 @@ CREATE TABLE `projects` (
                             PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Données (Exemple vide ou fictif pour tester)
 INSERT INTO `projects` (`title`, `description`, `image_url`, `date_completion`) VALUES
     ('Salle de bain moderne à Wavre', 'Rénovation complète avec douche à l\'italienne.', 'img/portfolio/sdb-wavre.jpg', '2023-11-15');
 
@@ -80,7 +74,6 @@ CREATE TABLE `team` (
                         PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Données Team
 INSERT INTO `team` (`name`, `role`, `bio`, `image_url`) VALUES
                                                             ('Jean-François Dengis', 'Gérant & Expert Technique', 'Issu d\'une formation technique en sanitaire et plomberie, il fonde Saniflo avec passion. Expert Viessmann et formateur.', 'img/jf-dengis.jpg'),
                                                             ('Florence Lambinon', 'Gérante & Administration', 'Diplômée en techniques cinématographiques et sciences-économiques. Elle gère l\'administration et le lien clientèle.', 'img/florence.jpg');
@@ -98,7 +91,6 @@ CREATE TABLE `certifications` (
                                   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Données Certifications
 INSERT INTO `certifications` (`region`, `title`, `number`) VALUES
                                                                ('Général', 'QUALIWALL (Solaire thermique)', 'N° 00246'),
                                                                ('Général', 'Cerga (Installateur Gaz)', 'N° 02-03038-NP'),
@@ -111,7 +103,7 @@ INSERT INTO `certifications` (`region`, `title`, `number`) VALUES
                                                                ('Flandre', 'Installateur Mazout', 'TV42728');
 
 -- ========================================================
--- 7. Table : MESSAGES (Formulaire de contact)
+-- 7. Table : MESSAGES (Formulaire de contact simple)
 -- ========================================================
 
 DROP TABLE IF EXISTS `messages`;
@@ -121,9 +113,37 @@ CREATE TABLE `messages` (
                             `email` varchar(150) NOT NULL,
                             `telephone` varchar(20) DEFAULT NULL,
                             `message` text NOT NULL,
-                            `is_read` tinyint(1) DEFAULT 0, -- Pour marquer comme "Lu" dans l'admin
+                            `is_read` tinyint(1) DEFAULT 0,
                             `date_envoi` datetime DEFAULT current_timestamp(),
                             PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ========================================================
+-- 8. Table : QUOTE_REQUESTS (Nouveau : Système de Devis)
+-- ========================================================
+
+DROP TABLE IF EXISTS `quote_requests`;
+CREATE TABLE `quote_requests` (
+                                  `id` int(11) NOT NULL AUTO_INCREMENT,
+    -- Étape 1 : Projet
+                                  `energy_type` varchar(50) NOT NULL, -- Gaz, Mazout, Pompe à chaleur
+                                  `surface_area` varchar(50) NOT NULL, -- <75m2, <150m2, etc.
+    -- Étape 2 : Timing & Description
+                                  `timeline` varchar(50) NOT NULL, -- Rapidement, < 3 mois, etc.
+                                  `description` text,
+    -- Étape 3 : Coordonnées
+                                  `firstname` varchar(100) NOT NULL,
+                                  `lastname` varchar(100) NOT NULL,
+                                  `email` varchar(150) NOT NULL,
+                                  `phone` varchar(20) DEFAULT NULL,
+    -- Étape 4 : Adresse
+                                  `street` varchar(255) NOT NULL,
+                                  `zip` varchar(20) NOT NULL,
+                                  `city` varchar(100) NOT NULL,
+
+                                  `status` varchar(20) DEFAULT 'nouveau', -- nouveau, traité, archivé
+                                  `created_at` datetime DEFAULT current_timestamp(),
+                                  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 COMMIT;

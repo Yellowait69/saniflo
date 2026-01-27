@@ -5,6 +5,7 @@ session_start();
 // 2. Chargement des fichiers nécessaires (Autoloader manuel ici)
 // Dans un vrai projet pro, on utiliserait Composer (vendor/autoload.php)
 require_once __DIR__ . '/../models/Certification.php';
+require_once __DIR__ . '/../models/Quote.php';
 require_once __DIR__ . '/../models/Team.php';
 require_once __DIR__ . '/../models/Service.php';
 require_once __DIR__ . '/../controllers/HomeController.php';
