@@ -61,7 +61,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <li><a href="#accueil">Accueil</a></li>
         <li><a href="#apropos">À Propos</a></li>
         <li><a href="#services">Services</a></li>
-        <li><a href="#agrements">Agréments</a></li>
         <li><a href="#contact" class="btn-nav">Contact</a></li>
     </ul>
     <div class="burger">
@@ -71,14 +70,41 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <header id="accueil">
     <div class="hero-overlay"></div>
-    <div class="hero-content">
-        <span class="badge">Depuis 1997</span>
-        <h1>Votre Expert en <br>Chauffage & Sanitaire</h1>
-        <p>Installation, rénovation et dépannage dans tout le Brabant Wallon. <br>Une expertise dirigée par <strong>Jean-François Dengis</strong> et <strong>Florence Lambinon</strong>.</p>
-        <div class="hero-buttons">
-            <a href="#contact" class="btn-primary">Devis Gratuit</a>
-            <a href="#services" class="btn-secondary">Nos Services</a>
+    <div class="container hero-grid">
+
+        <div class="hero-text-side">
+            <span class="badge">Depuis 1997</span>
+            <h1>Votre Expert en <br>Chauffage & Sanitaire</h1>
+            <p>Installation, rénovation et dépannage dans tout le Brabant Wallon. <br>Une expertise dirigée par <strong>Jean-François Dengis</strong> et <strong>Florence Lambinon</strong>.</p>
+            <div class="hero-buttons">
+                <a href="#contact" class="btn-primary">Devis Gratuit</a>
+                <a href="#services" class="btn-secondary">Nos Services</a>
+            </div>
         </div>
+
+        <div class="hero-certs-box">
+            <h3><i class="fas fa-certificate"></i> Agréments</h3>
+            <div class="hero-certs-list">
+                <?php
+                try {
+                    // On récupère les certifications
+                    $stmt = $pdo->query("SELECT * FROM certifications ORDER BY region ASC, title ASC");
+                    while ($cert = $stmt->fetch()) {
+                        echo '<div class="hero-cert-item">';
+                        echo '<div class="cert-icon"><i class="fas fa-check-circle"></i></div>';
+                        echo '<div>';
+                        echo '<h4>' . htmlspecialchars($cert['title']) . '</h4>';
+                        echo '<p>' . htmlspecialchars($cert['number']) . '</p>';
+                        echo '</div>';
+                        echo '</div>';
+                    }
+                } catch (Exception $e) {
+                    echo '<p>Chargement...</p>';
+                }
+                ?>
+            </div>
+        </div>
+
     </div>
 </header>
 
@@ -155,7 +181,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         echo '</div>';
                     }
                 } else {
-                    // Fallback propre si pas de services en DB
                     echo '<p style="text-align:center; width:100%;">Nos services incluent : Installation chaudières, Pompes à chaleur, Adoucisseurs d\'eau et Sanitaires complets.</p>';
                 }
             } catch (Exception $e) {
@@ -163,55 +188,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
             ?>
         </div>
-    </div>
-</section>
-
-<section id="agrements" class="bg-blue">
-    <div class="container">
-        <div class="section-title white-title text-center compact-title">
-            <h2>Agréments & Certifications</h2>
-            <p>L'assurance d'un travail aux normes.</p>
-        </div>
-
-        <?php
-        try {
-            // Requête SQL (inchangée)
-            $sql = "SELECT * FROM certifications 
-                    ORDER BY FIELD(region, 'Général', 'Wallonie', 'Flandre', 'Bruxelles'), 
-                    title ASC";
-            $stmt = $pdo->query($sql);
-            $certifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            if (count($certifications) > 0) {
-                // Regroupement (inchangé)
-                $groupes = [];
-                foreach ($certifications as $cert) {
-                    $groupes[$cert['region']][] = $cert;
-                }
-
-                // Affichage
-                foreach ($groupes as $regionName => $certsInRegion) {
-                    // Titre de séparation stylisé
-                    echo '<h3 class="region-separator"><span>' . htmlspecialchars($regionName) . '</span></h3>';
-
-                    echo '<div class="cert-grid-compact">'; // Nouvelle classe CSS pour la grille
-
-                    foreach ($certsInRegion as $cert) {
-                        echo '
-                        <div class="cert-item-sleek"> <div class="cert-content">
-                                <h4>' . htmlspecialchars($cert['title']) . '</h4>
-                                <p class="cert-number">' . htmlspecialchars($cert['number']) . '</p>
-                            </div>
-                        </div>';
-                    }
-                    echo '</div>';
-                }
-
-            } else {
-                echo '<p class="no-data">Aucune certification.</p>';
-            }
-        } catch (Exception $e) { echo '<div class="alert">Erreur chargement.</div>'; }
-        ?>
     </div>
 </section>
 
