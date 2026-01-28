@@ -22,7 +22,7 @@ class HomeController {
         // 3. Traitement des Formulaires (POST)
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-            // --- A. FORMULAIRE DE CONTACT (Amélioré avec l'objet) ---
+            // --- A. FORMULAIRE DE CONTACT (Simple) ---
             if (isset($_POST['nom']) && isset($_POST['message']) && !isset($_POST['appointment_date'])) {
                 $nom = htmlspecialchars(strip_tags(trim($_POST['nom'])));
                 $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
@@ -43,63 +43,103 @@ class HomeController {
                 }
             }
 
-            // --- B. TRAITEMENT DU WIZARD (Demande de Devis/Entretien) ---
+            // --- B. TRAITEMENT DU WIZARD (Prise de Rendez-vous Complexe) ---
             if (isset($_POST['appointment_date'])) {
                 try {
-                    // Vérification de la limite de 6 rendez-vous par lundi
+                    // 1. Vérification du quota (Max 6 RDV par Lundi)
                     $dateRdv = $_POST['appointment_date'];
                     $stmtCount = $this->pdo->prepare("SELECT COUNT(*) FROM quote_requests WHERE appointment_date = ?");
                     $stmtCount->execute([$dateRdv]);
                     $count = $stmtCount->fetchColumn();
 
                     if ($count >= 6) {
-                        $message_status = '<div class="alert error">Désolé, ce lundi est déjà complet pour les réservations en ligne.</div>';
+                        $message_status = '<div class="alert error">Désolé, ce lundi est déjà complet (maximum atteint).</div>';
                     } else {
-                        // Récupération et nettoyage des données
+                        // 2. Préparation des données
+
+                        // Données Entreprise / Particulier
                         $is_company = (int)($_POST['is_company'] ?? 0);
-                        $firstname = htmlspecialchars(strip_tags(trim($_POST['firstname'])));
-                        $lastname = htmlspecialchars(strip_tags(trim($_POST['lastname'])));
-                        $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
-                        $zip = htmlspecialchars(strip_tags(trim($_POST['zip'])));
+
+                        // Calcul de la date complète (Date + Heure)
                         $full_date = $dateRdv . ' ' . ($_POST['appointment_time'] ?? '08:00:00');
 
+                        // Gestion Chantier (Coché = 1, sinon 0)
+                        // Note : dans le HTML, la checkbox s'appelle souvent 'worksite_same'
+                        $worksite_same = isset($_POST['worksite_same']) ? 1 : 0;
+
+                        // Requête SQL mise à jour avec les nouveaux champs
                         $sql = "INSERT INTO quote_requests (
-                            is_company, company_name, vat_number, vat_regime, 
-                            firstname, lastname, email, phone, street, zip, city, 
-                            device_model, device_serial, device_year, 
-                            appointment_date, payment_method, total_price_htva, status
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nouveau')";
+                            is_company, company_name, vat_number, vat_regime, housing_year,
+                            firstname, lastname, email, phone, 
+                            billing_street, billing_box, billing_zip, billing_city,
+                            worksite_same_as_billing, worksite_name, worksite_street, worksite_box, worksite_zip, worksite_city, worksite_phone, worksite_email,
+                            device_model, device_serial, device_year, device_kw,
+                            appointment_date, payment_method, total_price_htva, description, status
+                        ) VALUES (
+                            ?, ?, ?, ?, ?, 
+                            ?, ?, ?, ?, 
+                            ?, ?, ?, ?, 
+                            ?, ?, ?, ?, ?, ?, ?, ?, 
+                            ?, ?, ?, ?, 
+                            ?, ?, ?, ?, 'nouveau'
+                        )";
 
                         $stmt = $this->pdo->prepare($sql);
+
                         $stmt->execute([
+                            // Bloc 1 : Statut
                             $is_company,
                             $_POST['company_name'] ?? null,
                             $_POST['vat_number'] ?? null,
                             $_POST['vat_regime'] ?? null,
-                            $firstname,
-                            $lastname,
-                            $email,
+                            !empty($_POST['housing_year']) ? $_POST['housing_year'] : null,
+
+                            // Bloc 2 : Contact Principal
+                            htmlspecialchars(strip_tags(trim($_POST['firstname']))),
+                            htmlspecialchars(strip_tags(trim($_POST['lastname']))),
+                            filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL),
                             $_POST['tel'] ?? null,
-                            $_POST['street'] ?? '',
-                            $zip,
-                            $_POST['city'] ?? '',
+
+                            // Bloc 3 : Facturation (Attention aux noms des inputs HTML correspondants)
+                            // Le wizard envoie 'street' -> billing_street, 'zip' -> billing_zip, etc.
+                            $_POST['street'] ?? '',      // Input name="street" devient billing_street
+                            $_POST['billing_box'] ?? null,
+                            $_POST['zip'] ?? '',         // Input name="zip" devient billing_zip
+                            $_POST['city'] ?? '',        // Input name="city" devient billing_city
+
+                            // Bloc 4 : Chantier
+                            $worksite_same,
+                            $_POST['worksite_name'] ?? null,
+                            $_POST['worksite_street'] ?? null,
+                            $_POST['worksite_box'] ?? null,
+                            $_POST['worksite_zip'] ?? null,
+                            $_POST['worksite_city'] ?? null,
+                            $_POST['worksite_phone'] ?? null,
+                            $_POST['worksite_email'] ?? null,
+
+                            // Bloc 5 : Appareil
                             $_POST['device_model'] ?? null,
                             $_POST['device_serial'] ?? null,
-                            $_POST['device_year'] ?? null,
+                            !empty($_POST['device_year']) ? $_POST['device_year'] : null,
+                            $_POST['device_kw'] ?? null,
+
+                            // Bloc 6 : RDV & Paiement
                             $full_date,
                             $_POST['payment_method'] ?? 'intervention',
-                            $_POST['total_price_htva'] ?? 0
+                            $_POST['total_price_htva'] ?? 0,
+                            $_POST['description'] ?? null
                         ]);
 
-                        $message_status = '<div class="alert success">Votre rendez-vous a été pré-enregistré avec succès.</div>';
+                        $message_status = '<div class="alert success">Votre rendez-vous a été confirmé avec succès. Vous recevrez un email de confirmation.</div>';
                     }
                 } catch (Exception $e) {
-                    $message_status = '<div class="alert error">Erreur lors de l\'enregistrement du rendez-vous.</div>';
+                    // Pour le débogage, vous pouvez afficher $e->getMessage(), mais en prod évitez.
+                    $message_status = '<div class="alert error">Une erreur est survenue lors de l\'enregistrement. Veuillez réessayer.</div>';
                 }
             }
         }
 
-        // 4. Récupération des données via les Modèles
+        // 4. Récupération des données via les Modèles (inchangé)
         try {
             $certifications = Certification::getAll($this->pdo);
             $teamMembers = Team::getAll($this->pdo);

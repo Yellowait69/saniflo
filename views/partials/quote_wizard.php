@@ -3,98 +3,206 @@
         <div class="wizard-container">
             <div class="section-title">
                 <h2>Prise de rendez-vous</h2>
-                <p>Un projet spécifique ? Une urgence ? Nous sommes à votre écoute.</p>
+                <p>Vos informations complètes pour une intervention efficace.</p>
             </div>
+
+            <?= $message_status ?? '' ?>
+
             <div class="wizard-steps">
                 <div class="step-indicator active" data-step="0" data-title="Profil">1</div>
                 <div class="step-indicator" data-step="1" data-title="Appareil">2</div>
-                <div class="step-indicator" data-step="2" data-title="Rendez-vous">3</div>
-                <div class="step-indicator" data-step="3" data-title="Facturation">4</div>
+                <div class="step-indicator" data-step="2" data-title="Date">3</div>
+                <div class="step-indicator" data-step="3" data-title="Coordonnées">4</div>
             </div>
 
             <form id="wizardForm" action="index.php#devis-wizard" method="POST">
 
                 <div class="step active-step">
-                    <h3>Vous êtes :</h3>
-                    <div class="form-group">
-                        <label><input type="radio" name="is_company" value="0" checked onclick="toggleCompanyFields(false)"> Particulier</label>
-                        <label><input type="radio" name="is_company" value="1" onclick="toggleCompanyFields(true)"> Société</label>
+                    <h3><i class="fas fa-user-circle"></i> Votre Profil</h3>
+
+                    <div class="form-group" style="justify-content: center; gap: 30px; margin-bottom: 30px;">
+                        <label class="radio-card">
+                            <input type="radio" name="is_company" value="0" checked onclick="toggleCompanyFields(false)">
+                            <span><i class="fas fa-home"></i> Particulier</span>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="is_company" value="1" onclick="toggleCompanyFields(true)">
+                            <span><i class="fas fa-building"></i> Société</span>
+                        </label>
                     </div>
-                    <div id="company-fields" style="display:none;">
-                        <input type="text" name="company_name" placeholder="Raison sociale">
-                        <input type="text" name="vat_number" placeholder="N° de TVA">
-                        <select name="vat_regime">
-                            <option value="21">TVA 21%</option>
-                            <option value="6">TVA 6% (Habitation > 10 ans)</option>
-                            <option value="autoliquidation">Autoliquidation (0%)</option>
+
+                    <div id="private-fields">
+                        <div class="form-group">
+                            <label>Année de première occupation (TVA)</label>
+                            <input type="number" name="housing_year" placeholder="Ex: 2010" min="1900" max="<?= date('Y') ?>">
+                            <small style="color:#666; font-size:0.8rem;">* Si > 10 ans : TVA 6%. Sinon : TVA 21%.</small>
+                        </div>
+                    </div>
+
+                    <div id="company-fields" style="display:none; background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                        <div class="form-group">
+                            <label>Nom de la société</label>
+                            <input type="text" name="company_name" placeholder="Raison Sociale">
+                        </div>
+                        <div class="form-group">
+                            <label>Numéro de TVA</label>
+                            <input type="text" name="vat_number" placeholder="BE 0XXX.XXX.XXX">
+                        </div>
+                        <div class="form-group">
+                            <label>Régime TVA</label>
+                            <select name="vat_regime">
+                                <option value="21">TVA 21% (Non assujetti)</option>
+                                <option value="0">TVA 0% (Autoliquidation / Co-contractant)</option>
+                                <option value="6">TVA 6% (Syndic / Logement privé > 10 ans)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="wizard-buttons">
+                        <button type="button" class="next-btn">Suivant <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <h3><i class="fas fa-tools"></i> Votre Appareil</h3>
+
+                    <div class="form-group">
+                        <label>Type d'intervention</label>
+                        <select name="service_type" id="service_type" onchange="updateWizardPrice()" required>
+                            <option value="entretien_gaz_viessmann" data-price="160">Entretien GAZ - Viessmann (160€ HTVA)</option>
+                            <option value="entretien_mazout_viessmann" data-price="190">Entretien MAZOUT - Viessmann (190€ HTVA)</option>
+                            <option value="entretien_adoucisseur_bwt" data-price="140">Entretien Adoucisseur - BWT (140€ HTVA)</option>
                         </select>
                     </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>Modèle</label>
+                            <input type="text" name="device_model" placeholder="Ex: Vitodens 200-W" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Puissance (kW)</label>
+                            <input type="text" name="device_kw" placeholder="Ex: 24 kW">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>N° de série</label>
+                            <input type="text" name="device_serial" placeholder="Voir plaque signalétique">
+                        </div>
+                        <div class="form-group">
+                            <label>Année</label>
+                            <input type="number" name="device_year" placeholder="Ex: 2018">
+                        </div>
+                    </div>
+
                     <div class="wizard-buttons">
-                        <button type="button" class="next-btn">Suivant</button>
+                        <button type="button" class="prev-btn"><i class="fas fa-arrow-left"></i> Précédent</button>
+                        <button type="button" class="next-btn">Suivant <i class="fas fa-arrow-right"></i></button>
                     </div>
                 </div>
 
                 <div class="step">
-                    <h3>Détails de l'appareil</h3>
-                    <select name="service_type" id="service_type" onchange="updateWizardPrice()" required>
-                        <option value="entretien_gaz_viessmann" data-price="160">Gaz Viessmann (160€)</option>
-                        <option value="entretien_mazout_viessmann" data-price="190">Mazout Viessmann (190€)</option>
-                        <option value="entretien_adoucisseur_bwt" data-price="140">Adoucisseur BWT (140€)</option>
-                    </select>
-                    <input type="text" name="device_model" placeholder="Modèle" required>
-                    <input type="text" name="device_serial" placeholder="Numéro de série">
-                    <input type="number" name="device_year" placeholder="Année d'installation">
-                    <div class="wizard-buttons">
-                        <button type="button" class="prev-btn">Précédent</button>
-                        <button type="button" class="next-btn">Suivant</button>
+                    <h3><i class="fas fa-calendar-alt"></i> Rendez-vous</h3>
+                    <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 0.9rem;">
+                        <i class="fas fa-info-circle"></i> Entretiens uniquement le <strong>Lundi</strong>.
                     </div>
-                </div>
 
-                <div class="step">
-                    <h3>Planification</h3>
-                    <input type="text" name="zip" id="wizard_zip" placeholder="Code Postal" required>
-                    <input type="date" name="appointment_date" id="wizard_date" required>
-                    <select name="appointment_time" id="wizard_time" required>
-                        <option value="08:00">08:00</option>
-                        <option value="09:00">09:00</option>
-                        <option value="10:00">10:00</option>
-                        <option value="11:00">11:00</option>
-                        <option value="12:30">12:30</option>
-                        <option value="13:30">13:30</option>
-                        <option value="14:30">14:30</option>
-                        <option value="15:30">15:30</option>
-                    </select>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>Date (Lundi)</label>
+                            <input type="date" name="appointment_date" id="wizard_date" required min="<?= date('Y-m-d') ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>Heure</label>
+                            <select name="appointment_time" id="wizard_time" required>
+                                <option value="08:00">08:00</option>
+                                <option value="09:00">09:00</option>
+                                <option value="10:00">10:00</option>
+                                <option value="11:00">11:00</option>
+                                <option value="12:30">12:30</option>
+                                <option value="13:30">13:30</option>
+                                <option value="14:30">14:30</option>
+                                <option value="15:30">15:30</option>
+                            </select>
+                        </div>
+                    </div>
 
-                    <div class="payment-selection">
-                        <h4>Mode de paiement :</h4>
-                        <label><input type="radio" name="payment_method" value="direct" checked onchange="updateWizardPrice()"> Direct (Prix normal)</label>
-                        <label><input type="radio" name="payment_method" value="after" onchange="updateWizardPrice()"> Après intervention (+3%)</label>
+                    <div class="payment-selection" style="margin-top:20px;">
+                        <h4>Mode de paiement</h4>
+                        <label class="radio-option">
+                            <input type="radio" name="payment_method" value="direct" checked onchange="updateWizardPrice()">
+                            <span>Direct (Sur place)</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="payment_method" value="after" onchange="updateWizardPrice()">
+                            <span>Après intervention (+3% frais admin)</span>
+                        </label>
                     </div>
 
                     <div class="price-display">
-                        Prix HTVA estimé : <span id="display_price">160.00</span> €
+                        Total HTVA : <span id="display_price">160.00</span> €
                         <input type="hidden" name="total_price_htva" id="input_price" value="160">
                     </div>
 
                     <div class="wizard-buttons">
-                        <button type="button" class="prev-btn">Précédent</button>
-                        <button type="button" class="next-btn">Suivant</button>
+                        <button type="button" class="prev-btn"><i class="fas fa-arrow-left"></i> Précédent</button>
+                        <button type="button" class="next-btn">Suivant <i class="fas fa-arrow-right"></i></button>
                     </div>
                 </div>
 
                 <div class="step">
-                    <h3>Vos coordonnées</h3>
-                    <input type="text" name="firstname" placeholder="Prénom" required>
-                    <input type="text" name="lastname" placeholder="Nom" required>
-                    <input type="email" name="email" placeholder="Email" required>
-                    <input type="text" name="street" placeholder="Rue et numéro" required>
-                    <input type="text" name="city" placeholder="Ville" required> <textarea name="description" placeholder="Commentaires éventuels"></textarea>
+                    <h3><i class="fas fa-file-invoice"></i> Facturation</h3>
+
+                    <div class="form-group"><input type="text" name="lastname" placeholder="Nom" required></div>
+                    <div class="form-group"><input type="text" name="firstname" placeholder="Prénom" required></div>
+                    <div class="form-group"><input type="email" name="email" placeholder="E-mail" required></div>
+                    <div class="form-group"><input type="tel" name="tel" placeholder="GSM" required></div>
+
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px;">
+                        <input type="text" name="billing_street" placeholder="Rue et numéro" required>
+                        <input type="text" name="billing_box" placeholder="Boîte">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-top: 15px;">
+                        <input type="text" name="zip" id="wizard_zip" placeholder="CP" required>
+                        <input type="text" name="billing_city" placeholder="Commune" required>
+                    </div>
+
+                    <div style="margin-top: 30px; border-top: 2px dashed #eee; padding-top: 20px;">
+                        <label style="font-weight: bold; display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" name="worksite_same" id="worksite_check" checked onchange="toggleWorksite(this.checked)">
+                            Adresse de chantier identique à la facturation ?
+                        </label>
+                    </div>
+
+                    <div id="worksite-fields" style="display: none; margin-top: 15px; background: #f9f9f9; padding: 15px; border-radius: 8px;">
+                        <h4>📍 Adresse du chantier</h4>
+                        <div class="form-group"><input type="text" name="worksite_name" placeholder="Nom occupant (si différent)"></div>
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px;">
+                            <input type="text" name="worksite_street" placeholder="Rue et numéro">
+                            <input type="text" name="worksite_box" placeholder="Boîte">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-top: 15px;">
+                            <input type="text" name="worksite_zip" placeholder="CP">
+                            <input type="text" name="worksite_city" placeholder="Commune">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                            <input type="tel" name="worksite_phone" placeholder="GSM sur place">
+                            <input type="email" name="worksite_email" placeholder="Email occupant">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 20px;">
+                        <textarea name="description" placeholder="Commentaires (Accès, étage, code porte...)"></textarea>
+                    </div>
 
                     <div class="wizard-buttons">
-                        <button type="button" class="prev-btn">Précédent</button>
-                        <button type="submit" class="btn-primary">Confirmer le rendez-vous</button>
+                        <button type="button" class="prev-btn"><i class="fas fa-arrow-left"></i> Précédent</button>
+                        <button type="submit" class="btn-primary">Confirmer le Rendez-vous</button>
                     </div>
                 </div>
+
             </form>
         </div>
     </div>

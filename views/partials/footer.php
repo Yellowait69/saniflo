@@ -43,6 +43,9 @@
                 <a href="#" onclick="openModal('modal-privacy'); return false;">Politique de confidentialité (RGPD)</a>
                 <span class="separator">|</span>
                 <a href="#" onclick="openModal('modal-terms'); return false;">Mentions Légales</a>
+                <a href="admin/" style="margin-left: 15px; color: white; opacity: 0.5; font-size: 0.8rem;" title="Administration">
+                    <i class="fas fa-lock"></i>
+                </a>
             </div>
         </div>
     </div>

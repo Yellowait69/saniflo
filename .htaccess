@@ -1,10 +1,12 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Si l'URL contient déjà "public/", on ne fait rien.
-    # On a retiré le "^" pour chercher "public/" n'importe où dans l'URL
+    # 1. EXCEPTION : Ne pas rediriger si on accède au dossier admin
+    RewriteCond %{REQUEST_URI} !^/admin/
+
+    # 2. Si l'URL contient déjà "public/", on ne fait rien non plus
     RewriteCond %{REQUEST_URI} !public/
 
-    # Redirige tout le reste vers le dossier public
+    # 3. Pour tout le reste, on redirige vers le dossier public
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

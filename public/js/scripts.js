@@ -68,7 +68,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Boutons "Suivant"
         document.querySelectorAll('.next-btn').forEach(button => {
             button.addEventListener('click', () => {
-                const currentInputs = steps[currentStep].querySelectorAll('input[required], select[required], textarea[required]');
+                // On ne valide que les champs visibles de l'étape courante
+                const currentStepEl = steps[currentStep];
+                // Sélectionne tous les inputs requis qui ne sont pas cachés (ex: via display:none)
+                const currentInputs = Array.from(currentStepEl.querySelectorAll('input[required], select[required], textarea[required]'))
+                    .filter(input => input.offsetParent !== null);
+
                 let isValid = true;
 
                 currentInputs.forEach(input => {
@@ -129,14 +134,51 @@ function updateWizardPrice() {
 }
 
 /**
- * Affichage des champs société
+ * Affiche/Masque les champs Société vs Particulier
  */
-function toggleCompanyFields(show) {
-    const fields = document.getElementById('company-fields');
-    if (fields) {
-        fields.style.display = show ? 'block' : 'none';
-        const inputs = fields.querySelectorAll('input, select');
-        inputs.forEach(input => input.required = show);
+function toggleCompanyFields(isCompany) {
+    const companyFields = document.getElementById('company-fields');
+    const privateFields = document.getElementById('private-fields'); // Contient l'année pour la TVA
+
+    // Gestion champs Société
+    if (companyFields) {
+        companyFields.style.display = isCompany ? 'block' : 'none';
+        const inputs = companyFields.querySelectorAll('input, select');
+        inputs.forEach(input => input.required = isCompany);
+    }
+
+    // Gestion champs Particulier (Année habitation pour TVA)
+    if (privateFields) {
+        privateFields.style.display = isCompany ? 'none' : 'block';
+        // On rend optionnel si on est une société
+        const pInputs = privateFields.querySelectorAll('input');
+        pInputs.forEach(input => input.required = !isCompany);
+    }
+}
+
+/**
+ * Affiche/Masque les champs Adresse de Chantier
+ * Appelé par la checkbox "Adresse identique"
+ */
+function toggleWorksite(isSame) {
+    const worksiteFields = document.getElementById('worksite-fields');
+    if (worksiteFields) {
+        // Si c'est identique (isSame = true), on cache les champs chantier
+        worksiteFields.style.display = isSame ? 'none' : 'block';
+
+        const inputs = worksiteFields.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            // Si c'est caché, ce n'est pas requis. Si c'est visible, on active le required.
+            // On peut cibler spécifiquement les champs critiques (Rue, CP, Ville)
+            if (!isSame) {
+                // On rend obligatoire au moins la rue, le CP et la ville
+                if (input.name.includes('street') || input.name.includes('zip') || input.name.includes('city')) {
+                    input.required = true;
+                }
+            } else {
+                input.required = false;
+            }
+        });
     }
 }
 
@@ -150,6 +192,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Restriction Calendrier : Uniquement les lundis
         dateInput.addEventListener('input', function() {
+            if (!this.value) return;
+
             const date = new Date(this.value);
             const day = date.getUTCDay(); // 1 = Lundi
             if (day !== 1) {
@@ -161,10 +205,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         function validateConstraints() {
+            if (!zipInput.value) return;
             const zip = parseInt(zipInput.value);
             const selectedTime = timeSelect.value;
 
-            if (!zip || !selectedTime) return;
+            if (!selectedTime) return;
 
             // Zones 1400-1499 et 1500-1970 : Limité à 08h00 ou 15h30
             if ((zip >= 1400 && zip <= 1499) || (zip >= 1500 && zip <= 1970)) {
