@@ -14,7 +14,7 @@
                     <li><a href="#accueil">Accueil</a></li>
                     <li><a href="#apropos">À Propos</a></li>
                     <li><a href="#services">Services</a></li>
-                    <li><a href="#devis">Demande de Devis</a></li>
+                    <li><a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank">Demande de Devis</a></li>
                     <li><a href="#contact">Contact</a></li>
                 </ul>
             </div>
@@ -57,13 +57,13 @@
                 Le responsable du traitement des données est Saniflo SRL, situé Rue de Fontenelle 15, 1325 Dion-Valmont (BE 0461.290.428).</p>
 
             <p><strong>2. Données collectées</strong><br>
-                Via nos formulaires (contact et devis), nous collectons : Nom, Prénom, Email, Téléphone, Adresse et informations relatives à votre projet. Ces données sont strictement nécessaires pour répondre à votre demande.</p>
+                Via notre formulaire de contact, nous collectons : Nom, Email, Téléphone et votre message. Ces données sont strictement nécessaires pour répondre à votre demande.</p>
 
             <p><strong>3. Utilisation des données</strong><br>
-                Vos données sont utilisées uniquement pour : l'établissement de devis, la prise de rendez-vous et la facturation. Elles ne sont <strong>jamais vendues</strong> à des tiers.</p>
+                Vos données sont utilisées uniquement pour : répondre à vos questions, la prise de rendez-vous et la facturation. Elles ne sont <strong>jamais vendues</strong> à des tiers.</p>
 
             <p><strong>4. Conservation</strong><br>
-                Les données de devis sans suite sont conservées 3 ans maximum. Les données de facturation sont conservées selon les obligations légales (7 à 10 ans).</p>
+                Les données de contact sans suite sont conservées 3 ans maximum. Les données de facturation sont conservées selon les obligations légales (7 à 10 ans).</p>
 
             <p><strong>5. Vos droits</strong><br>
                 Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Contactez-nous à info@saniflo.be pour exercer ce droit.</p>
@@ -79,7 +79,7 @@
             <p><strong>Éditeur du site :</strong> Saniflo SRL</p>
             <p><strong>Siège social :</strong> Rue de Fontenelle 15, 1325 Dion-Valmont, Belgique</p>
             <p><strong>Numéro d'entreprise (BCE) :</strong> BE 0461.290.428</p>
-            <p><strong>Gérants :</strong> Jean-François Dengis & Florence Lambinon</p>
+            <p><strong>Administrateurs :</strong> Jean-François Dengis & Florence Lambinon</p>
             <p><strong>Hébergement :</strong> Alwaysdata - 91 rue du Faubourg Saint Honoré, 75008 Paris.</p>
             <p><strong>Propriété intellectuelle :</strong> Tous les contenus (textes, images, logo) présents sur ce site sont la propriété exclusive de Saniflo SRL. Toute reproduction est interdite sans autorisation.</p>
         </div>

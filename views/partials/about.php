@@ -9,7 +9,7 @@
             <div class="about-text">
                 <h3>Notre Histoire</h3>
                 <p>Créée en 1997, <strong>Saniflo SRL</strong> est une société familiale implantée au cœur du Brabant Wallon (Dion-Valmont). Spécialisée en chauffage, adoucisseur et énergie renouvelable, nous mettons un point d'honneur à la qualité.</p>
-                <p>Des formations permanentes nous permettent d'installer des produits peu énergivores. Conseils, devis gratuits, entretiens et garanties sont assurés par le gérant lui-même.</p>
+                <p>Des formations permanentes nous permettent d'installer des produits peu énergivores. Conseils, devis gratuits, entretiens et garanties sont assurés par l'administrateur lui-même.</p>
 
                 <div class="target-box">
                     <h4><i class="fas fa-users"></i> Pour VOUS</h4>

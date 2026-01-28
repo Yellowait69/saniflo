@@ -18,7 +18,10 @@
 include __DIR__ . '/partials/header.php';
 include __DIR__ . '/partials/about.php';
 include __DIR__ . '/partials/services.php';
-include __DIR__ . '/partials/quote_wizard.php';
+
+// Le module de devis local (quote_wizard.php) a été retiré
+// pour être remplacé par un bouton vers un lien externe dans le header.
+
 include __DIR__ . '/partials/contact.php';
 include __DIR__ . '/partials/footer.php';
 ?>
