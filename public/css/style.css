@@ -751,3 +751,258 @@ footer p {
     }
 }
 
+/* ==========================================================================
+   MODULE WIZARD (PRISE DE RENDEZ-VOUS EN LIGNE)
+   ========================================================================== */
+
+/* --- Conteneur Principal --- */
+#devis-wizard {
+    padding: 80px 0;
+    background: #f4f7f6; /* Gris très léger pour différencier du fond blanc */
+}
+
+.wizard-container {
+    background: var(--white);
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+    position: relative;
+    overflow: hidden; /* Pour contenir les animations */
+}
+
+/* --- Indicateurs d'étapes (Le fil d'ariane en haut) --- */
+.wizard-steps {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 40px;
+    position: relative;
+}
+
+/* Ligne grise derrière les étapes */
+.wizard-steps::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #e0e0e0;
+    z-index: 1;
+    transform: translateY(-50%);
+}
+
+.step-indicator {
+    position: relative;
+    z-index: 2;
+    background: #e0e0e0;
+    color: #666;
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+    border-radius: 50%;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: 0.3s all;
+    border: 3px solid var(--white); /* Contour blanc pour couper la ligne */
+}
+
+/* Texte sous la bulle (1. Profil, etc.) */
+.step-indicator::after {
+    content: attr(data-step-title); /* On peut utiliser un attribut data pour le texte */
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    margin-top: 8px;
+    opacity: 0; /* Caché par défaut sur mobile */
+}
+
+/* Étate Active (Bleu) */
+.step-indicator.active {
+    background: var(--primary-blue);
+    color: white;
+    transform: scale(1.1);
+    box-shadow: 0 0 0 4px rgba(0, 112, 205, 0.1);
+}
+
+/* Étate Complétée (Vert ou Bleu foncé) */
+.step-indicator.completed {
+    background: var(--primary-dark);
+    color: var(--accent-yellow);
+}
+
+/* Afficher les textes sur écran large */
+@media (min-width: 768px) {
+    .step-indicator { width: 50px; height: 50px; line-height: 50px; font-size: 1.1rem; }
+    .step-indicator::after { opacity: 1; }
+}
+
+/* --- Les Étapes (Contenu du formulaire) --- */
+.step {
+    display: none; /* Caché par défaut */
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.step.active-step {
+    display: block; /* Affiché si actif */
+}
+
+.step h3 {
+    text-align: center;
+    color: var(--primary-dark);
+    margin-bottom: 25px;
+    font-size: 1.5rem;
+}
+
+/* --- Champs de formulaire spécifiques au Wizard --- */
+.wizard-container input,
+.wizard-container select,
+.wizard-container textarea {
+    width: 100%;
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    transition: 0.3s;
+    background: #fafafa;
+}
+
+.wizard-container input:focus,
+.wizard-container select:focus,
+.wizard-container textarea:focus {
+    border-color: var(--primary-blue);
+    background: white;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 112, 205, 0.1);
+}
+
+/* Styles pour les radios (Choix Particulier/Société & Paiement) */
+.wizard-container .form-group {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.wizard-container label {
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wizard-container input[type="radio"] {
+    width: auto;
+    margin: 0;
+    accent-color: var(--primary-blue); /* Couleur native du navigateur */
+}
+
+/* --- Section Prix & Paiement --- */
+.payment-selection {
+    background: #f0f8ff;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #cfe2ff;
+    margin-bottom: 20px;
+}
+
+.payment-selection h4 {
+    color: var(--primary-dark);
+    margin-bottom: 15px;
+    font-size: 1rem;
+}
+
+.price-display {
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 30px 0;
+    padding: 15px;
+    background: var(--accent-yellow);
+    border-radius: var(--radius);
+    color: var(--primary-dark);
+}
+
+.price-display span {
+    font-size: 1.5rem;
+}
+
+/* --- Boutons de Navigation (Précédent / Suivant) --- */
+.wizard-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+    gap: 15px;
+}
+
+.prev-btn, .next-btn {
+    padding: 12px 30px;
+    border-radius: 50px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+    border: none;
+    font-family: 'Poppins', sans-serif;
+}
+
+.prev-btn {
+    background: #e0e0e0;
+    color: #555;
+}
+
+.prev-btn:hover {
+    background: #d0d0d0;
+}
+
+.next-btn {
+    background: var(--primary-blue);
+    color: white;
+    margin-left: auto; /* Pousse à droite si seul */
+}
+
+.next-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 112, 205, 0.2);
+}
+
+/* Validation visuelle */
+input:invalid, select:invalid {
+    border-color: #ffcccc;
+}
+
+/* Animation d'apparition */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Responsive --- */
+@media (max-width: 600px) {
+    .wizard-container {
+        padding: 20px;
+    }
+
+    .wizard-steps {
+        margin-bottom: 25px;
+    }
+
+    .wizard-buttons {
+        flex-direction: column-reverse; /* Bouton Suivant en haut sur mobile */
+    }
+
+    .next-btn, .prev-btn, .btn-primary {
+        width: 100%;
+        text-align: center;
+    }
+}
+

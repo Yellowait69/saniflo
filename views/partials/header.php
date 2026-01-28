@@ -6,7 +6,10 @@
         <li><a href="#accueil">Accueil</a></li>
         <li><a href="#apropos">À Propos</a></li>
         <li><a href="#services">Services</a></li>
-        <li><a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank" style="color:var(--primary-blue, #0070cd);">Devis</a></li>
+        <li><a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank" style="color:var(--primary-blue);">Devis</a></li>
+        <li><a href="tel:0495501717" class="btn-nav" style="background-color: var(--accent-yellow); color: var(--primary-dark) !important;">
+                <i class="fas fa-phone-alt"></i> 0495 50 17 17</a>
+        </li>
         <li><a href="#contact" class="btn-nav">Contact</a></li>
     </ul>
     <div class="burger"><i class="fas fa-bars"></i></div>
@@ -20,9 +23,16 @@
             <span class="badge">Depuis 1997</span>
             <h1>Votre Expert en <br>Chauffage & Sanitaire</h1>
             <p>Installation, rénovation et dépannage dans tout le Brabant Wallon. <br>Une expertise dirigée par <strong>Jean-François Dengis</strong> et <strong>Florence Lambinon</strong>.</p>
+
             <div class="hero-buttons">
-                <a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank" class="btn-primary">Demander un devis</a>
-                <a href="#services" class="btn-secondary">Nos Services</a>
+                <a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank" class="btn-primary">
+                    <i class="fas fa-calendar-alt"></i> Devis
+                </a>
+                <a href="#contact" class="btn-secondary">Nous contacter</a>
+            </div>
+
+            <div style="margin-top: 20px; font-size: 0.9rem; opacity: 0.9;">
+                <p><i class="fas fa-info-circle"></i> Entretien chaudière à partir de 160€ HTVA (Gaz) / 190€ HTVA (Mazout).</p>
             </div>
         </div>
 
@@ -30,16 +40,12 @@
             <h3><i class="fas fa-certificate"></i> Agréments</h3>
             <div class="hero-certs-list">
                 <?php if (!empty($certifications)):
-                    // 1. Définition de l'ordre souhaité
                     $order = ['Général', 'Wallonie', 'Bruxelles', 'Flandre'];
-
-                    // 2. Organisation des données par région
                     $certsByRegion = [];
                     foreach ($certifications as $cert) {
                         $certsByRegion[$cert['region']][] = $cert;
                     }
 
-                    // 3. Affichage en suivant l'ordre défini
                     foreach ($order as $regionName):
                         if (isset($certsByRegion[$regionName])): ?>
                             <div class="cert-group">

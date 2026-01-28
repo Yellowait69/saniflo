@@ -13,15 +13,20 @@
 <body>
 
 <?php
-// On inclut chaque bloc séparément
-// Note : assurez-vous que les fichiers existent dans views/partials/
+// 1. En-tête (Logo, Nav, Hero)
 include __DIR__ . '/partials/header.php';
+
+// 2. Présentation
 include __DIR__ . '/partials/about.php';
+
+// 3. Services
 include __DIR__ . '/partials/services.php';
 
-// Le module de devis local (quote_wizard.php) a été retiré
-// pour être remplacé par un bouton vers un lien externe dans le header.
+// 4. Module de Prise de Rendez-vous (Wizard)
+// Ce fichier doit être créé dans views/partials/quote_wizard.php
+include __DIR__ . '/partials/quote_wizard.php';
 
+// 5. Contact & Footer
 include __DIR__ . '/partials/contact.php';
 include __DIR__ . '/partials/footer.php';
 ?>
