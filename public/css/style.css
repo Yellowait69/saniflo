@@ -114,7 +114,7 @@ nav {
     color: var(--primary-dark);
 }
 
-/* --- HERO SECTION (Version 2 Colonnes avec Agréments) --- */
+/* --- HERO SECTION (Version 2 Colonnes avec Agréments Divisés) --- */
 header#accueil {
     height: 90vh;
     min-height: 600px;
@@ -214,7 +214,7 @@ header#accueil {
 
 .hero-certs-box h3 {
     font-size: 1.2rem;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     border-bottom: 2px solid var(--accent-yellow);
     padding-bottom: 10px;
     display: inline-block;
@@ -222,7 +222,7 @@ header#accueil {
 }
 
 .hero-certs-list {
-    max-height: 300px; /* Scroll si trop long */
+    max-height: 350px; /* Légèrement augmenté pour les titres de régions */
     overflow-y: auto;
     padding-right: 10px;
 }
@@ -231,13 +231,29 @@ header#accueil {
 .hero-certs-list::-webkit-scrollbar { width: 5px; }
 .hero-certs-list::-webkit-scrollbar-thumb { background: var(--accent-yellow); border-radius: 10px; }
 
+/* Division par régions */
+.region-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--accent-yellow);
+    letter-spacing: 1px;
+    margin: 15px 0 8px 5px;
+    border-left: 2px solid var(--accent-yellow);
+    padding-left: 8px;
+    font-weight: 600;
+}
+
+.cert-group:first-child .region-label {
+    margin-top: 0;
+}
+
 .hero-cert-item {
     display: flex;
-    gap: 15px;
-    margin-bottom: 15px;
+    gap: 12px;
+    margin-bottom: 8px;
     align-items: center;
     background: rgba(0, 0, 0, 0.2);
-    padding: 10px 15px;
+    padding: 8px 12px;
     border-radius: 8px;
     transition: transform 0.2s;
 }
@@ -249,18 +265,19 @@ header#accueil {
 
 .cert-icon {
     color: var(--accent-yellow);
-    font-size: 1.2rem;
+    font-size: 1rem;
 }
 
-.hero-cert-item h4 {
-    font-size: 0.95rem;
+.hero-cert-item h5 {
+    font-size: 0.85rem;
     font-weight: 600;
     margin: 0;
     line-height: 1.2;
+    color: white;
 }
 
 .hero-cert-item p {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     margin: 0;
     opacity: 0.8;
     font-family: monospace;

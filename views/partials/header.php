@@ -29,16 +29,33 @@
         <div class="hero-certs-box">
             <h3><i class="fas fa-certificate"></i> Agréments</h3>
             <div class="hero-certs-list">
-                <?php if (!empty($certifications)): ?>
-                    <?php foreach ($certifications as $cert): ?>
-                        <div class="hero-cert-item">
-                            <div class="cert-icon"><i class="fas fa-check-circle"></i></div>
-                            <div>
-                                <h4><?= htmlspecialchars($cert['title']) ?></h4>
-                                <p><?= htmlspecialchars($cert['number']) ?></p>
+                <?php if (!empty($certifications)):
+                    // 1. Définition de l'ordre souhaité
+                    $order = ['Général', 'Wallonie', 'Bruxelles', 'Flandre'];
+
+                    // 2. Organisation des données par région
+                    $certsByRegion = [];
+                    foreach ($certifications as $cert) {
+                        $certsByRegion[$cert['region']][] = $cert;
+                    }
+
+                    // 3. Affichage en suivant l'ordre défini
+                    foreach ($order as $regionName):
+                        if (isset($certsByRegion[$regionName])): ?>
+                            <div class="cert-group">
+                                <h4 class="region-label"><?= htmlspecialchars($regionName) ?></h4>
+                                <?php foreach ($certsByRegion[$regionName] as $cert): ?>
+                                    <div class="hero-cert-item">
+                                        <div class="cert-icon"><i class="fas fa-check-circle"></i></div>
+                                        <div>
+                                            <h5><?= htmlspecialchars($cert['title']) ?></h5>
+                                            <p><?= htmlspecialchars($cert['number']) ?></p>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
                             </div>
-                        </div>
-                    <?php endforeach; ?>
+                        <?php endif;
+                    endforeach; ?>
                 <?php else: ?>
                     <p>Chargement des agréments...</p>
                 <?php endif; ?>
