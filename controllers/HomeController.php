@@ -144,6 +144,7 @@ class HomeController {
             $certifications = Certification::getAll($this->pdo);
             $teamMembers = Team::getAll($this->pdo);
             $services = Service::getAll($this->pdo);
+            $projects = Project::getAll($this->pdo);
         } catch (Exception $e) {
             $certifications = [];
             $teamMembers = [];

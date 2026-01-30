@@ -14,6 +14,7 @@
                     <li><a href="#accueil">Accueil</a></li>
                     <li><a href="#apropos">À Propos</a></li>
                     <li><a href="#services">Services</a></li>
+                    <li><a href="#realisations">Réalisations</a></li>
                     <li><a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank">Demande de Devis</a></li>
                     <li><a href="#contact">Contact</a></li>
                 </ul>
@@ -32,7 +33,7 @@
                 <h4>Informations Légales</h4>
                 <p><strong>Saniflo SRL</strong></p>
                 <p>TVA : BE 0461.290.428</p>
-                <p>Agrément Gaz : CERGA / G1 / G2</p>
+                <p>Agrément Gaz : CERGA / G1 / G2 / TG1 / TG2</p>
                 <p>Agrément Mazout : L1 / TV</p>
             </div>
         </div>

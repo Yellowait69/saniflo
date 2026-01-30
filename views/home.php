@@ -22,6 +22,9 @@ include __DIR__ . '/partials/about.php';
 // 3. Services
 include __DIR__ . '/partials/services.php';
 
+// AJOUT : 3b. Portfolio / Réalisations
+include __DIR__ . '/partials/portfolio.php';
+
 // 4. Module de Prise de Rendez-vous (Wizard)
 // Ce fichier doit être créé dans views/partials/quote_wizard.php
 include __DIR__ . '/partials/quote_wizard.php';

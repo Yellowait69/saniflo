@@ -7,6 +7,7 @@ session_start();
 require_once __DIR__ . '/../models/Certification.php';
 require_once __DIR__ . '/../models/Team.php';
 require_once __DIR__ . '/../models/Service.php';
+require_once __DIR__ . '/../models/Project.php';
 require_once __DIR__ . '/../controllers/HomeController.php';
 
 // 3. Connexion à la base de données

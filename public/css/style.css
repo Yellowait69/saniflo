@@ -1006,3 +1006,183 @@ input:invalid, select:invalid {
     }
 }
 
+/* --- PORTFOLIO / REALISATIONS (Slider Horizontal) --- */
+
+.portfolio-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* Le conteneur qui défile */
+.portfolio-slider {
+    display: flex; /* Alignement horizontal */
+    gap: 30px;
+    overflow-x: auto; /* Active le scroll horizontal */
+    scroll-snap-type: x mandatory; /* Effet d'aimant (snap) */
+    padding: 20px 5px; /* Espace pour l'ombre */
+    -webkit-overflow-scrolling: touch; /* Fluidité sur iOS */
+    scrollbar-width: none; /* Cache la barre de scroll (Firefox) */
+    width: 100%;
+}
+
+/* Cache la barre de scroll (Chrome/Safari) */
+.portfolio-slider::-webkit-scrollbar {
+    display: none;
+}
+
+/* La carte individuelle - CORRIGÉE */
+.portfolio-item {
+    background: #fff;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-soft);
+    border: 1px solid #eee;
+    transition: transform 0.3s ease;
+
+    /* --- CORRECTION: Largeur stricte pour éviter l'étirement --- */
+    width: 350px;
+    min-width: 350px;
+    max-width: 350px;
+    flex: 0 0 350px; /* Figé à 350px, ne grandit pas, ne rétrécit pas */
+
+    scroll-snap-align: start; /* La carte se cale à gauche */
+}
+
+.portfolio-item:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-hover);
+}
+
+.portfolio-img {
+    position: relative;
+    width: 100%; /* Prend toute la largeur de la carte */
+    height: 220px;
+    overflow: hidden;
+    background: #f0f0f0;
+}
+
+.portfolio-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block; /* Supprime l'espace vide sous l'image */
+    transition: transform 0.5s;
+}
+
+.portfolio-item:hover .portfolio-img img {
+    transform: scale(1.05);
+}
+
+.portfolio-category {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: var(--accent-yellow);
+    color: var(--primary-dark);
+    padding: 5px 12px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.portfolio-content {
+    padding: 25px;
+}
+
+.portfolio-content h3 {
+    color: var(--primary-dark);
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    white-space: nowrap;      /* Empêche le titre de passer à la ligne */
+    overflow: hidden;         /* Coupe si trop long */
+    text-overflow: ellipsis;  /* Ajoute ... */
+}
+
+.portfolio-meta {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.portfolio-meta i {
+    color: var(--primary-blue);
+    margin-right: 5px;
+}
+
+.portfolio-content p {
+    color: #555;
+    font-size: 0.95rem;
+    margin-bottom: 20px;
+    line-height: 1.5;
+    /* --- CORRECTION : Suppression des limites pour afficher tout le texte --- */
+    /* display: -webkit-box; */
+    /* -webkit-line-clamp: 3; */
+    /* overflow: hidden; */
+}
+
+.btn-portfolio {
+    display: inline-block;
+    padding: 8px 0;
+    color: var(--primary-blue);
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: 0.3s;
+}
+
+.btn-portfolio:hover {
+    color: var(--primary-dark);
+    border-bottom-color: var(--accent-yellow);
+}
+
+/* Boutons de navigation (Flèches) */
+.slider-btn {
+    background: var(--white);
+    border: 1px solid #eee;
+    color: var(--primary-dark);
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.slider-btn:hover {
+    background: var(--primary-blue);
+    color: white;
+    transform: scale(1.1);
+}
+
+/* --- CORRECTION : Nouveaux noms de classes pour éviter le conflit --- */
+.portfolio-prev { margin-right: 15px; }
+.portfolio-next { margin-left: 15px; }
+
+/* Responsive Mobile */
+@media (max-width: 768px) {
+    .portfolio-item {
+        /* --- CORRECTION MOBILE: Taille stricte plus petite --- */
+        width: 280px;
+        min-width: 280px;
+        max-width: 280px;
+        flex: 0 0 280px;
+    }
+
+    .slider-btn {
+        display: none;
+    }
+
+    .portfolio-slider {
+        padding-left: 20px;
+        padding-right: 20px; /* Important pour voir la dernière carte */
+    }
+}
