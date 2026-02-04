@@ -28,7 +28,7 @@ include __DIR__ . '/partials/portfolio.php';
 // 4. Module de Prise de Rendez-vous (Wizard)
 // Ce fichier doit être créé dans views/partials/quote_wizard.php
 include __DIR__ . '/partials/quote_wizard.php';
-
+include __DIR__ . '/partials/reviews.php';
 // 5. Contact & Footer
 include __DIR__ . '/partials/contact.php';
 include __DIR__ . '/partials/footer.php';
