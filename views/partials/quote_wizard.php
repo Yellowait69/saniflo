@@ -8,11 +8,15 @@
 
             <?= $message_status ?? '' ?>
 
+            <div id="zone-alert" style="display:none; margin-bottom: 20px; padding: 15px; border-radius: 8px; border-left: 5px solid #ff9800; background: #fff3e0; color: #e65100;">
+                <i class="fas fa-exclamation-triangle"></i> <span id="zone-alert-text"></span>
+            </div>
+
             <div class="wizard-steps">
                 <div class="step-indicator active" data-step="0" data-title="Profil">1</div>
                 <div class="step-indicator" data-step="1" data-title="Appareil">2</div>
-                <div class="step-indicator" data-step="2" data-title="Date">3</div>
-                <div class="step-indicator" data-step="3" data-title="Coordonnées">4</div>
+                <div class="step-indicator" data-step="2" data-title="Coordonnées">3</div>
+                <div class="step-indicator" data-step="3" data-title="Date">4</div>
             </div>
 
             <form id="wizardForm" action="index.php#devis-wizard" method="POST">
@@ -34,7 +38,7 @@
                     <div id="private-fields">
                         <div class="form-group">
                             <label>Année de première occupation (TVA)</label>
-                            <input type="number" name="housing_year" placeholder="Ex: 2010" min="1900" max="<?= date('Y') ?>">
+                            <input type="number" name="housing_year" placeholder="Ex: 2010" min="1800" max="<?= date('Y') ?>">
                             <small style="color:#666; font-size:0.8rem;">* Si > 10 ans : TVA 6%. Sinon : TVA 21%.</small>
                         </div>
                     </div>
@@ -104,9 +108,52 @@
                 </div>
 
                 <div class="step">
-                    <h3><i class="fas fa-calendar-alt"></i> Rendez-vous</h3>
+                    <h3><i class="fas fa-file-invoice"></i> Vos Coordonnées</h3>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group"><input type="text" name="lastname" placeholder="Nom" required></div>
+                        <div class="form-group"><input type="text" name="firstname" placeholder="Prénom" required></div>
+                    </div>
+                    <div class="form-group"><input type="email" name="email" placeholder="E-mail" required></div>
+                    <div class="form-group"><input type="tel" name="tel" placeholder="GSM" required></div>
+
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px;">
+                        <input type="text" name="billing_street" placeholder="Rue et numéro" required>
+                        <input type="text" name="billing_box" placeholder="Boîte">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-top: 15px;">
+                        <input type="text" name="zip" id="wizard_zip" placeholder="Code Postal" required>
+                        <input type="text" name="billing_city" placeholder="Commune" required>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <label style="font-weight: bold; display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" name="worksite_same" id="worksite_check" checked onchange="toggleWorksite(this.checked)">
+                            Adresse de chantier identique ?
+                        </label>
+                    </div>
+
+                    <div id="worksite-fields" style="display: none; margin-top: 15px; background: #f9f9f9; padding: 15px; border-radius: 8px;">
+                        <h4>📍 Adresse du chantier</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-bottom: 15px;">
+                            <input type="text" name="worksite_zip" id="worksite_zip" placeholder="CP Chantier">
+                            <input type="text" name="worksite_city" placeholder="Commune">
+                        </div>
+                        <input type="text" name="worksite_street" placeholder="Rue et numéro" style="width:100%;">
+                    </div>
+
+                    <div class="wizard-buttons">
+                        <button type="button" class="prev-btn"><i class="fas fa-arrow-left"></i> Précédent</button>
+                        <button type="button" class="next-btn">Suivant <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <h3><i class="fas fa-calendar-alt"></i> Planification</h3>
+
                     <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 0.9rem;">
                         <i class="fas fa-info-circle"></i> Entretiens uniquement le <strong>Lundi</strong>.
+                        Maximum 6 réservations en ligne par jour.
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -115,8 +162,9 @@
                             <input type="date" name="appointment_date" id="wizard_date" required min="<?= date('Y-m-d') ?>">
                         </div>
                         <div class="form-group">
-                            <label>Heure</label>
+                            <label>Heure disponible</label>
                             <select name="appointment_time" id="wizard_time" required>
+                                <option value="">Choisir une heure</option>
                                 <option value="08:00">08:00</option>
                                 <option value="09:00">09:00</option>
                                 <option value="10:00">10:00</option>
@@ -129,77 +177,32 @@
                         </div>
                     </div>
 
-                    <div class="payment-selection" style="margin-top:20px;">
+                    <div class="payment-selection" style="margin-top:20px; border-top: 1px solid #eee; padding-top: 20px;">
                         <h4>Mode de paiement</h4>
-                        <label class="radio-option">
-                            <input type="radio" name="payment_method" value="direct" checked onchange="updateWizardPrice()">
-                            <span>Direct (Sur place)</span>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="payment_method" value="after" onchange="updateWizardPrice()">
-                            <span>Après intervention (+3% frais admin)</span>
-                        </label>
+                        <div style="display: flex; gap: 20px;">
+                            <label class="radio-option">
+                                <input type="radio" name="payment_method" value="direct" checked onchange="updateWizardPrice()">
+                                <span>Direct (Sur place)</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="payment_method" value="after" onchange="updateWizardPrice()">
+                                <span>Après intervention (+3% frais)</span>
+                            </label>
+                        </div>
                     </div>
 
-                    <div class="price-display">
-                        Total HTVA : <span id="display_price">160.00</span> €
+                    <div class="price-display" style="background: #f1f8e9; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; font-weight: bold; color: #2e7d32;">
+                        Total HTVA estimé : <span id="display_price">160.00</span> €
                         <input type="hidden" name="total_price_htva" id="input_price" value="160">
                     </div>
 
-                    <div class="wizard-buttons">
-                        <button type="button" class="prev-btn"><i class="fas fa-arrow-left"></i> Précédent</button>
-                        <button type="button" class="next-btn">Suivant <i class="fas fa-arrow-right"></i></button>
-                    </div>
-                </div>
-
-                <div class="step">
-                    <h3><i class="fas fa-file-invoice"></i> Facturation</h3>
-
-                    <div class="form-group"><input type="text" name="lastname" placeholder="Nom" required></div>
-                    <div class="form-group"><input type="text" name="firstname" placeholder="Prénom" required></div>
-                    <div class="form-group"><input type="email" name="email" placeholder="E-mail" required></div>
-                    <div class="form-group"><input type="tel" name="tel" placeholder="GSM" required></div>
-
-                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px;">
-                        <input type="text" name="billing_street" placeholder="Rue et numéro" required>
-                        <input type="text" name="billing_box" placeholder="Boîte">
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-top: 15px;">
-                        <input type="text" name="zip" id="wizard_zip" placeholder="CP" required>
-                        <input type="text" name="billing_city" placeholder="Commune" required>
-                    </div>
-
-                    <div style="margin-top: 30px; border-top: 2px dashed #eee; padding-top: 20px;">
-                        <label style="font-weight: bold; display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" name="worksite_same" id="worksite_check" checked onchange="toggleWorksite(this.checked)">
-                            Adresse de chantier identique à la facturation ?
-                        </label>
-                    </div>
-
-                    <div id="worksite-fields" style="display: none; margin-top: 15px; background: #f9f9f9; padding: 15px; border-radius: 8px;">
-                        <h4>📍 Adresse du chantier</h4>
-                        <div class="form-group"><input type="text" name="worksite_name" placeholder="Nom occupant (si différent)"></div>
-                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px;">
-                            <input type="text" name="worksite_street" placeholder="Rue et numéro">
-                            <input type="text" name="worksite_box" placeholder="Boîte">
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-top: 15px;">
-                            <input type="text" name="worksite_zip" placeholder="CP">
-                            <input type="text" name="worksite_city" placeholder="Commune">
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
-                            <input type="tel" name="worksite_phone" placeholder="GSM sur place">
-                            <input type="email" name="worksite_email" placeholder="Email occupant">
-                        </div>
-                    </div>
-
                     <div class="form-group" style="margin-top: 20px;">
-                        <textarea name="description" placeholder="Commentaires (Accès, étage, code porte...)"></textarea>
+                        <textarea name="description" placeholder="Commentaires additionnels (Accès, code porte, étage...)"></textarea>
                     </div>
 
                     <div class="wizard-buttons">
                         <button type="button" class="prev-btn"><i class="fas fa-arrow-left"></i> Précédent</button>
-                        <button type="submit" class="btn-primary">Confirmer le Rendez-vous</button>
+                        <button type="submit" class="btn-primary" id="confirm-btn">Confirmer le Rendez-vous</button>
                     </div>
                 </div>
 

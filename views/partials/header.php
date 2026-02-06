@@ -3,16 +3,18 @@
         <a href="#"><img src="img/logo-saniflo.png" alt="Saniflo SRL Logo"></a>
     </div>
     <ul class="nav-links">
+        <li><a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank" style="color:var(--primary-blue);">Devis</a></li>
         <li><a href="#accueil">Accueil</a></li>
         <li><a href="#apropos">À Propos</a></li>
         <li><a href="#services">Services</a></li>
         <li><a href="#realisations">Réalisations</a></li>
+        <li><a href="#devis-wizard">Prendre RDV</a></li>
 
-        <li><a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank" style="color:var(--primary-blue);">Devis</a></li>
         <li><a href="tel:0495501717" class="btn-nav" style="background-color: var(--accent-yellow); color: var(--primary-dark) !important;">
                 <i class="fas fa-phone-alt"></i> 0495 50 17 17</a>
         </li>
         <li><a href="#contact" class="btn-nav">Contact</a></li>
+        <li><a href="#avis-google">Avis</a></li>
     </ul>
     <div class="burger"><i class="fas fa-bars"></i></div>
 </nav>

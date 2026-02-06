@@ -1,5 +1,6 @@
 /**
  * scripts.js - Version Consolidée Saniflo SRL (Wizard & Planification)
+ * Logic: 8 slots/Monday, 2 reserved (Max 6 web), Zip code restrictions.
  */
 
 // --- 1. NAVIGATION & MENU BURGER ---
@@ -65,17 +66,13 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        // Boutons "Suivant"
         document.querySelectorAll('.next-btn').forEach(button => {
             button.addEventListener('click', () => {
-                // On ne valide que les champs visibles de l'étape courante
                 const currentStepEl = steps[currentStep];
-                // Sélectionne tous les inputs requis qui ne sont pas cachés (ex: via display:none)
                 const currentInputs = Array.from(currentStepEl.querySelectorAll('input[required], select[required], textarea[required]'))
                     .filter(input => input.offsetParent !== null);
 
                 let isValid = true;
-
                 currentInputs.forEach(input => {
                     if (!input.checkValidity()) {
                         input.reportValidity();
@@ -90,7 +87,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // Boutons "Précédent"
         document.querySelectorAll('.prev-btn').forEach(button => {
             button.addEventListener('click', () => {
                 currentStep--;
@@ -101,9 +97,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // --- 4. CALCUL DES TARIFS & PAIEMENT ---
-/**
- * Calcule le prix final selon le mode de paiement (+3% si après intervention)
- */
 function calculatePrice(basePrice, paymentMethod) {
     if (paymentMethod === 'after') {
         return (basePrice * 1.03).toFixed(2);
@@ -111,9 +104,6 @@ function calculatePrice(basePrice, paymentMethod) {
     return basePrice.toFixed(2);
 }
 
-/**
- * Mise à jour dynamique du prix dans le Wizard
- */
 function updateWizardPrice() {
     const serviceSelect = document.getElementById('service_type');
     if (!serviceSelect) return;
@@ -125,7 +115,6 @@ function updateWizardPrice() {
     const paymentMethod = paymentMethodEl ? paymentMethodEl.value : 'direct';
 
     const finalPrice = calculatePrice(basePrice, paymentMethod);
-
     const displayEl = document.getElementById('display_price');
     const inputEl = document.getElementById('input_price');
 
@@ -133,56 +122,21 @@ function updateWizardPrice() {
     if (inputEl) inputEl.value = finalPrice;
 }
 
-/**
- * Affiche/Masque les champs Société vs Particulier
- */
 function toggleCompanyFields(isCompany) {
     const companyFields = document.getElementById('company-fields');
-    const privateFields = document.getElementById('private-fields'); // Contient l'année pour la TVA
-
-    // Gestion champs Société
-    if (companyFields) {
-        companyFields.style.display = isCompany ? 'block' : 'none';
-        const inputs = companyFields.querySelectorAll('input, select');
-        inputs.forEach(input => input.required = isCompany);
-    }
-
-    // Gestion champs Particulier (Année habitation pour TVA)
-    if (privateFields) {
-        privateFields.style.display = isCompany ? 'none' : 'block';
-        // On rend optionnel si on est une société
-        const pInputs = privateFields.querySelectorAll('input');
-        pInputs.forEach(input => input.required = !isCompany);
-    }
+    const privateFields = document.getElementById('private-fields');
+    if (companyFields) companyFields.style.display = isCompany ? 'block' : 'none';
+    if (privateFields) privateFields.style.display = isCompany ? 'none' : 'block';
 }
 
-/**
- * Affiche/Masque les champs Adresse de Chantier
- * Appelé par la checkbox "Adresse identique"
- */
 function toggleWorksite(isSame) {
     const worksiteFields = document.getElementById('worksite-fields');
     if (worksiteFields) {
-        // Si c'est identique (isSame = true), on cache les champs chantier
         worksiteFields.style.display = isSame ? 'none' : 'block';
-
-        const inputs = worksiteFields.querySelectorAll('input, select');
-        inputs.forEach(input => {
-            // Si c'est caché, ce n'est pas requis. Si c'est visible, on active le required.
-            // On peut cibler spécifiquement les champs critiques (Rue, CP, Ville)
-            if (!isSame) {
-                // On rend obligatoire au moins la rue, le CP et la ville
-                if (input.name.includes('street') || input.name.includes('zip') || input.name.includes('city')) {
-                    input.required = true;
-                }
-            } else {
-                input.required = false;
-            }
-        });
     }
 }
 
-// --- 5. VALIDATION PLANIFICATION (LUNDIS & ZONES) ---
+// --- 5. LOGIQUE DE PLANIFICATION (CRITÈRES JEAN-FRANÇOIS) ---
 document.addEventListener('DOMContentLoaded', function() {
     const dateInput = document.getElementById('wizard_date');
     const zipInput = document.getElementById('wizard_zip');
@@ -190,46 +144,60 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (dateInput && zipInput && timeSelect) {
 
-        // Restriction Calendrier : Uniquement les lundis
+        // Restriction : Uniquement les lundis
         dateInput.addEventListener('input', function() {
             if (!this.value) return;
-
             const date = new Date(this.value);
             const day = date.getUTCDay(); // 1 = Lundi
             if (day !== 1) {
-                alert("Les entretiens sont organisés uniquement le lundi.");
+                alert("Attention : Jean-François effectue les entretiens uniquement le lundi.");
                 this.value = '';
-                return;
             }
-            validateConstraints();
         });
 
-        function validateConstraints() {
-            if (!zipInput.value) return;
+        // Filtrage dynamique des heures selon le Code Postal
+        function filterTimesByZip() {
             const zip = parseInt(zipInput.value);
-            const selectedTime = timeSelect.value;
+            const options = timeSelect.querySelectorAll('option');
 
-            if (!selectedTime) return;
+            // Réinitialiser l'affichage
+            options.forEach(opt => opt.style.display = 'block');
 
-            // Zones 1400-1499 et 1500-1970 : Limité à 08h00 ou 15h30
+            if (isNaN(zip)) return;
+
+            // REGLE : 1980 et plus -> Uniquement sur demande
+            if (zip >= 1980) {
+                alert("Pour les codes postaux 1980 et plus, l'intervention se fait uniquement sur demande. Veuillez nous contacter.");
+                zipInput.value = '';
+                return;
+            }
+
+            // REGLE : 1400-1499 et 1500-1970 -> Uniquement 8h ou 15h30
             if ((zip >= 1400 && zip <= 1499) || (zip >= 1500 && zip <= 1970)) {
-                if (selectedTime !== "08:00" && selectedTime !== "15:30") {
-                    alert("Pour votre zone (" + zip + "), les rendez-vous sont limités à 08h00 ou 15h30.");
-                    timeSelect.value = '';
+                options.forEach(opt => {
+                    if (opt.value !== "08:00" && opt.value !== "15:30") {
+                        opt.style.display = 'none';
+                    }
+                });
+                // Si l'heure actuellement choisie devient invalide, on reset
+                if (timeSelect.value !== "08:00" && timeSelect.value !== "15:30") {
+                    timeSelect.value = "08:00";
                 }
             }
 
-            // Bruxelles (1000-1210) : Information (La validation consécutive est gérée côté PHP)
+            // REGLE : 1000-1210 (Bruxelles) -> Doivent être consécutifs
             if (zip >= 1000 && zip <= 1210) {
-                console.log("Zone Bruxelles détectée.");
+                // Note : On laisse le choix mais on informe l'utilisateur
+                console.log("Zone Bruxelles : L'heure pourra être réajustée pour garantir des r-v consécutifs.");
             }
         }
 
-        [zipInput, timeSelect].forEach(el => el.addEventListener('change', validateConstraints));
+        zipInput.addEventListener('input', filterTimesByZip);
+        zipInput.addEventListener('change', filterTimesByZip);
     }
 });
 
-// --- 6. GESTION DES MODALES (RGPD / LEGAL) ---
+// --- 6. GESTION DES MODALES ---
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -252,12 +220,3 @@ window.onclick = function(event) {
         document.body.style.overflow = "auto";
     }
 };
-
-document.addEventListener('keydown', function(event) {
-    if (event.key === "Escape") {
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.style.display = "none";
-            document.body.style.overflow = "auto";
-        });
-    }
-});

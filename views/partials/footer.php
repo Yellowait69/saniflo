@@ -11,12 +11,14 @@
             <div class="footer-col links-col">
                 <h4>Navigation</h4>
                 <ul>
+                    <li><a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank">Demande de Devis</a></li>
                     <li><a href="#accueil">Accueil</a></li>
                     <li><a href="#apropos">À Propos</a></li>
                     <li><a href="#services">Services</a></li>
                     <li><a href="#realisations">Réalisations</a></li>
-                    <li><a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank">Demande de Devis</a></li>
+                    <li><a href="#devis-wizard">Prendre Rendez-vous</a></li>
                     <li><a href="#contact">Contact</a></li>
+                    <li><a href="#avis-google">Avis Clients</a></li>
                 </ul>
             </div>
 
