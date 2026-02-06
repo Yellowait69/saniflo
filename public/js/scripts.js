@@ -1,6 +1,6 @@
 /**
- * scripts.js - Version Consolidée Saniflo SRL (Wizard & Planification)
- * Logic: 8 slots/Monday, 2 reserved (Max 6 web), Zip code restrictions.
+ * scripts.js - Version Corrigée Saniflo SRL
+ * Fixes: Bug "Données manquantes" + Validation Zip + Flatpickr
  */
 
 // --- 1. NAVIGATION & MENU BURGER ---
@@ -81,6 +81,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 if (isValid) {
+                    // --- AJOUT : Validation Code Postal avant d'aller au calendrier ---
+                    // Si on est à l'étape 3 (index 2) et qu'on veut aller à la 4 (Planification)
+                    if (currentStep === 2) {
+                        const zipVal = document.getElementById('wizard_zip').value;
+                        if (!zipVal) {
+                            alert("Veuillez entrer un code postal valide.");
+                            return;
+                        }
+                    }
+
                     currentStep++;
                     showStep(currentStep);
                 }
@@ -136,64 +146,108 @@ function toggleWorksite(isSame) {
     }
 }
 
-// --- 5. LOGIQUE DE PLANIFICATION (CRITÈRES JEAN-FRANÇOIS) ---
+// --- 5. LOGIQUE DE PLANIFICATION INTELLIGENTE (API + FLATPICKR) ---
 document.addEventListener('DOMContentLoaded', function() {
-    const dateInput = document.getElementById('wizard_date');
     const zipInput = document.getElementById('wizard_zip');
-    const timeSelect = document.getElementById('wizard_time');
+    const calendarInput = document.getElementById('calendar_picker');
+    const timeSelect = document.getElementById('time_slots');
+    const loader = document.getElementById('slot-loader');
 
-    if (dateInput && zipInput && timeSelect) {
+    let fp = null; // Instance Flatpickr
 
-        // Restriction : Uniquement les lundis
-        dateInput.addEventListener('input', function() {
-            if (!this.value) return;
-            const date = new Date(this.value);
-            const day = date.getUTCDay(); // 1 = Lundi
-            if (day !== 1) {
-                alert("Attention : Jean-François effectue les entretiens uniquement le lundi.");
-                this.value = '';
+    // 1. Initialisation de Flatpickr sur le champ date
+    if (calendarInput) {
+        fp = flatpickr(calendarInput, {
+            locale: "fr",
+            minDate: "today",
+            disable: [
+                function(date) {
+                    // Désactiver tout ce qui n'est pas un Lundi (1)
+                    return (date.getDay() !== 1);
+                }
+            ],
+            onChange: function(selectedDates, dateStr, instance) {
+                fetchSlots(dateStr);
             }
         });
+    }
 
-        // Filtrage dynamique des heures selon le Code Postal
-        function filterTimesByZip() {
-            const zip = parseInt(zipInput.value);
-            const options = timeSelect.querySelectorAll('option');
+    // 2. Fonction pour appeler l'API PHP
+    function fetchSlots(dateStr) {
+        // --- CORRECTION BUG MAJEUR ---
+        // Si la date est vide (ex: effacement ou reset), on ne fait RIEN.
+        // Cela empêche l'appel API qui causait l'erreur "Données manquantes".
+        if (!dateStr) return;
 
-            // Réinitialiser l'affichage
-            options.forEach(opt => opt.style.display = 'block');
+        const zip = zipInput.value;
 
-            if (isNaN(zip)) return;
-
-            // REGLE : 1980 et plus -> Uniquement sur demande
-            if (zip >= 1980) {
-                alert("Pour les codes postaux 1980 et plus, l'intervention se fait uniquement sur demande. Veuillez nous contacter.");
-                zipInput.value = '';
-                return;
-            }
-
-            // REGLE : 1400-1499 et 1500-1970 -> Uniquement 8h ou 15h30
-            if ((zip >= 1400 && zip <= 1499) || (zip >= 1500 && zip <= 1970)) {
-                options.forEach(opt => {
-                    if (opt.value !== "08:00" && opt.value !== "15:30") {
-                        opt.style.display = 'none';
-                    }
-                });
-                // Si l'heure actuellement choisie devient invalide, on reset
-                if (timeSelect.value !== "08:00" && timeSelect.value !== "15:30") {
-                    timeSelect.value = "08:00";
-                }
-            }
-
-            // REGLE : 1000-1210 (Bruxelles) -> Doivent être consécutifs
-            if (zip >= 1000 && zip <= 1210) {
-                // Note : On laisse le choix mais on informe l'utilisateur
-                console.log("Zone Bruxelles : L'heure pourra être réajustée pour garantir des r-v consécutifs.");
-            }
+        // Sécurité : Si le zip est vide, on empêche la sélection
+        if (!zip) {
+            alert("Veuillez d'abord entrer votre Code Postal à l'étape précédente.");
+            if (fp) fp.clear();
+            return;
         }
 
-        zipInput.addEventListener('input', filterTimesByZip);
-        zipInput.addEventListener('change', filterTimesByZip);
+        // Interface UI : Chargement
+        timeSelect.innerHTML = '<option value="">Chargement...</option>';
+        timeSelect.disabled = true;
+        if(loader) loader.style.display = 'block';
+
+        // Appel AJAX vers notre fichier PHP intermédiaire
+        fetch(`public/api_slots.php?date=${dateStr}&zip=${zip}`)
+            .then(response => response.json())
+            .then(data => {
+                if(loader) loader.style.display = 'none';
+                timeSelect.innerHTML = ''; // Clear options
+
+                if (data.error) {
+                    // Cas d'erreur (Zone interdite, Lundi complet, Mauvaise zone...)
+                    alert(data.error);
+                    if (fp) fp.clear(); // On efface la date invalide
+                    timeSelect.innerHTML = '<option value="">Date non disponible</option>';
+                } else if (data.slots && data.slots.length > 0) {
+                    // Cas Succès : On affiche les créneaux
+                    timeSelect.disabled = false;
+
+                    // Ajouter option par défaut
+                    let defaultOpt = document.createElement('option');
+                    defaultOpt.value = "";
+                    defaultOpt.text = "Choisir une heure";
+                    timeSelect.add(defaultOpt);
+
+                    // Ajouter les heures reçues de l'API
+                    data.slots.forEach(slot => {
+                        let opt = document.createElement('option');
+                        opt.value = slot;
+                        opt.text = slot;
+                        timeSelect.add(opt);
+                    });
+                } else {
+                    // Cas bizarre : pas d'erreur mais pas de slots (ex: tout est pris)
+                    timeSelect.innerHTML = '<option value="">Complet ce jour-là</option>';
+                    alert("Aucun créneau disponible pour ce lundi (Complet ou restrictions géographiques).");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                if(loader) loader.style.display = 'none';
+                alert("Erreur technique : Impossible de récupérer les disponibilités. Veuillez réessayer.");
+            });
+    }
+
+    // 3. Réinitialiser le calendrier si on change le code postal après coup
+    if (zipInput) {
+        zipInput.addEventListener('change', function() {
+            // --- CORRECTION BUG ---
+            // On utilise clear(false) : le 'false' signifie "Ne déclenche PAS l'événement onChange".
+            // Donc fetchSlots() n'est PAS appelé, et on évite l'erreur.
+            if (fp) fp.clear(false);
+
+            if (timeSelect) {
+                timeSelect.innerHTML = '<option value="">-- Sélectionnez une date d\'abord --</option>';
+                timeSelect.disabled = true;
+            }
+        });
     }
 });
 

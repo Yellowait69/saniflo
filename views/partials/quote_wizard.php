@@ -151,30 +151,26 @@
                 <div class="step">
                     <h3><i class="fas fa-calendar-alt"></i> Planification</h3>
 
-                    <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 0.9rem;">
-                        <i class="fas fa-info-circle"></i> Entretiens uniquement le <strong>Lundi</strong>.
-                        Maximum 6 réservations en ligne par jour.
+                    <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.95rem; color: #0d47a1;">
+                        <i class="fas fa-info-circle"></i> Voici les créneaux disponibles pour votre zone (<strong>CP <span id="display-zip">...</span></strong>).
+                        <br>Cliquez simplement sur une heure pour la sélectionner.
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div class="form-group">
-                            <label>Date (Lundi)</label>
-                            <input type="date" name="appointment_date" id="wizard_date" required min="<?= date('Y-m-d') ?>">
-                        </div>
-                        <div class="form-group">
-                            <label>Heure disponible</label>
-                            <select name="appointment_time" id="wizard_time" required>
-                                <option value="">Choisir une heure</option>
-                                <option value="08:00">08:00</option>
-                                <option value="09:00">09:00</option>
-                                <option value="10:00">10:00</option>
-                                <option value="11:00">11:00</option>
-                                <option value="12:30">12:30</option>
-                                <option value="13:30">13:30</option>
-                                <option value="14:30">14:30</option>
-                                <option value="15:30">15:30</option>
-                            </select>
-                        </div>
+                    <div id="slots-loader" style="text-align:center; padding: 40px; display:none;">
+                        <i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; color: #0070cd;"></i>
+                        <p style="margin-top:10px; color:#666;">Recherche des disponibilités en temps réel...</p>
+                    </div>
+
+                    <div id="slots-container" style="display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+                    </div>
+
+                    <input type="hidden" name="appointment_date" id="final_date" required>
+                    <input type="hidden" name="appointment_time" id="final_time" required>
+
+                    <div id="selection-summary" style="margin-top: 30px; padding: 15px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 8px; text-align: center; display: none;">
+                        <p style="margin:0; color: #2e7d32; font-weight: bold;">
+                            <i class="fas fa-check-circle"></i> Vous avez sélectionné : <span id="summary-text"></span>
+                        </p>
                     </div>
 
                     <div class="payment-selection" style="margin-top:20px; border-top: 1px solid #eee; padding-top: 20px;">
@@ -202,7 +198,7 @@
 
                     <div class="wizard-buttons">
                         <button type="button" class="prev-btn"><i class="fas fa-arrow-left"></i> Précédent</button>
-                        <button type="submit" class="btn-primary" id="confirm-btn">Confirmer le Rendez-vous</button>
+                        <button type="submit" class="btn-primary" id="confirm-btn" disabled>Confirmer le Rendez-vous</button>
                     </div>
                 </div>
 
