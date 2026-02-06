@@ -3,17 +3,13 @@
         <a href="#"><img src="img/logo-saniflo.png" alt="Saniflo SRL Logo"></a>
     </div>
     <ul class="nav-links">
-        <li><a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank" style="color:var(--primary-blue);">Devis</a></li>
         <li><a href="#accueil">Accueil</a></li>
         <li><a href="#apropos">À Propos</a></li>
         <li><a href="#services">Services</a></li>
         <li><a href="#realisations">Réalisations</a></li>
-        <li><a href="#devis-wizard">Prendre RDV</a></li>
-
         <li><a href="tel:0495501717" class="btn-nav" style="background-color: var(--accent-yellow); color: var(--primary-dark) !important;">
                 <i class="fas fa-phone-alt"></i> 0495 50 17 17</a>
         </li>
-        <li><a href="#contact" class="btn-nav">Contact</a></li>
         <li><a href="#avis-google">Avis</a></li>
     </ul>
     <div class="burger"><i class="fas fa-bars"></i></div>
@@ -28,16 +24,46 @@
             <h1>Votre Expert en <br>Chauffage & Sanitaire</h1>
             <p>Installation, rénovation et dépannage dans tout le Brabant Wallon. <br>Une expertise dirigée par <strong>Jean-François Dengis</strong> et <strong>Florence Lambinon</strong>.</p>
 
-            <div class="hero-buttons">
-                <a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank" class="btn-primary">
-                    <i class="fas fa-calendar-alt"></i> Devis
-                </a>
-                <a href="#contact" class="btn-secondary">Nous contacter</a>
+            <div style="margin-top: 35px; padding: 25px; background: rgba(0, 0, 0, 0.4); border-radius: 12px; border-left: 4px solid var(--accent-yellow); backdrop-filter: blur(8px);">
+                <p style="margin-bottom: 20px; font-weight: 600; color: #fff; font-size: 1.1rem;">
+                    <i class="fas fa-mouse-pointer"></i> Comment pouvons-nous vous aider ?
+                </p>
+
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+
+                    <a href="#devis-wizard" style="text-decoration: none; background: var(--accent-yellow); color: var(--primary-dark); padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; transition: transform 0.3s; box-shadow: 0 4px 10px rgba(255, 196, 0, 0.3);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="background: rgba(255,255,255,0.3); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i class="fas fa-calendar-check" style="font-size: 1.2rem; color: var(--primary-dark);"></i>
+                        </div>
+                        <div>
+                            <span style="display: block; font-weight: 800; font-size: 1rem; text-transform: uppercase;">Planifier un Entretien</span>
+                            <span style="display: block; font-size: 0.8rem; font-weight: 600; opacity: 0.9;">Agenda en ligne (Gaz, Mazout, Adoucisseur)</span>
+                        </div>
+                    </a>
+
+                    <a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank" style="text-decoration: none; background: var(--primary-blue); color: white; padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; transition: background 0.3s;" onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary-blue)'">
+                        <div style="background: rgba(255,255,255,0.2); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i class="fas fa-file-invoice-dollar" style="font-size: 1.2rem; color: white;"></i>
+                        </div>
+                        <div>
+                            <span style="display: block; font-weight: 700; font-size: 1rem;">Demander un Devis Gratuit</span>
+                            <span style="display: block; font-size: 0.8rem; opacity: 0.9;">Remplacement de chaudière, nouvelle installation...</span>
+                        </div>
+                    </a>
+
+                    <a href="#contact" style="text-decoration: none; background: rgba(255,255,255,0.1); color: white; padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 1px solid rgba(255,255,255,0.2); transition: background 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                        <div style="background: rgba(255,255,255,0.1); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i class="fas fa-tools" style="font-size: 1.1rem; color: white;"></i>
+                        </div>
+                        <div>
+                            <span style="display: block; font-weight: 600; font-size: 1rem;">Dépannage & Autres demandes</span>
+                            <span style="display: block; font-size: 0.8rem; opacity: 0.7;">Panne, urgence, fuite ou question générale</span>
+                        </div>
+                    </a>
+
+                </div>
             </div>
 
-            <div style="margin-top: 20px; font-size: 0.9rem; opacity: 0.9;">
-                <p><i class="fas fa-info-circle"></i> Entretien chaudière à partir de 160€ HTVA (Gaz) / 190€ HTVA (Mazout).</p>
-            </div>
         </div>
 
         <div class="hero-certs-box">

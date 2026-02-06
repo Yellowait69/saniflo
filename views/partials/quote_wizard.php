@@ -152,26 +152,30 @@
                     <h3><i class="fas fa-calendar-alt"></i> Planification</h3>
 
                     <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.95rem; color: #0d47a1;">
-                        <i class="fas fa-info-circle"></i> Voici les créneaux disponibles pour votre zone (<strong>CP <span id="display-zip">...</span></strong>).
-                        <br>Cliquez simplement sur une heure pour la sélectionner.
+                        <i class="fas fa-info-circle"></i> Voici les prochaines disponibilités pour votre zone (<strong>CP <span id="display-zip">...</span></strong>).
                     </div>
 
-                    <div id="slots-loader" style="text-align:center; padding: 40px; display:none;">
+                    <div id="slots-loader" style="text-align:center; padding: 20px; display:none;">
                         <i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; color: #0070cd;"></i>
-                        <p style="margin-top:10px; color:#666;">Recherche des disponibilités en temps réel...</p>
+                        <p>Recherche des dates disponibles...</p>
                     </div>
 
-                    <div id="slots-container" style="display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+                    <div class="form-group">
+                        <label>Dates disponibles (Lundi uniquement)</label>
+                        <select id="date_select" required style="background: white;">
+                            <option value="">-- Sélectionnez d'abord vos coordonnées --</option>
+                        </select>
                     </div>
 
-                    <input type="hidden" name="appointment_date" id="final_date" required>
-                    <input type="hidden" name="appointment_time" id="final_time" required>
-
-                    <div id="selection-summary" style="margin-top: 30px; padding: 15px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 8px; text-align: center; display: none;">
-                        <p style="margin:0; color: #2e7d32; font-weight: bold;">
-                            <i class="fas fa-check-circle"></i> Vous avez sélectionné : <span id="summary-text"></span>
-                        </p>
+                    <div class="form-group">
+                        <label>Heure de passage</label>
+                        <select id="time_slots" disabled style="background: #f4f7f6;">
+                            <option value="">-- Choisissez une date --</option>
+                        </select>
                     </div>
+
+                    <input type="hidden" name="appointment_date" id="final_date">
+                    <input type="hidden" name="appointment_time" id="final_time">
 
                     <div class="payment-selection" style="margin-top:20px; border-top: 1px solid #eee; padding-top: 20px;">
                         <h4>Mode de paiement</h4>

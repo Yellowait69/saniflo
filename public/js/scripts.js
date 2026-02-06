@@ -1,6 +1,6 @@
 /**
- * scripts.js - Version Corrigée Saniflo SRL
- * Fixes: Bug "Données manquantes" + Validation Zip + Flatpickr
+ * scripts.js - Version "Proposition Automatique"
+ * Remplace le calendrier par une liste des prochaines disponibilités
  */
 
 // --- 1. NAVIGATION & MENU BURGER ---
@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const indicators = document.querySelectorAll('.step-indicator');
     let currentStep = 0;
 
+    // Variable pour stocker les créneaux chargés depuis l'API
+    let availableDaysData = [];
+
     if (steps.length > 0) {
         function showStep(n) {
             steps.forEach((step, index) => {
@@ -66,9 +69,11 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
+        // --- GESTION DU BOUTON SUIVANT ---
         document.querySelectorAll('.next-btn').forEach(button => {
             button.addEventListener('click', () => {
                 const currentStepEl = steps[currentStep];
+                // On vérifie uniquement les champs visibles requis
                 const currentInputs = Array.from(currentStepEl.querySelectorAll('input[required], select[required], textarea[required]'))
                     .filter(input => input.offsetParent !== null);
 
@@ -81,14 +86,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 if (isValid) {
-                    // --- AJOUT : Validation Code Postal avant d'aller au calendrier ---
-                    // Si on est à l'étape 3 (index 2) et qu'on veut aller à la 4 (Planification)
+                    // Si on est à l'étape 3 (Coordonnées/Zip) et qu'on va vers l'étape 4 (Planification)
                     if (currentStep === 2) {
                         const zipVal = document.getElementById('wizard_zip').value;
                         if (!zipVal) {
                             alert("Veuillez entrer un code postal valide.");
                             return;
                         }
+
+                        // Mise à jour de l'affichage du CP dans le message info
+                        const displayZip = document.getElementById('display-zip');
+                        if(displayZip) displayZip.innerText = zipVal;
+
+                        // Lancement de la recherche automatique des dates
+                        fetchNextDates(zipVal);
                     }
 
                     currentStep++;
@@ -97,6 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        // --- GESTION DU BOUTON PRÉCÉDENT ---
         document.querySelectorAll('.prev-btn').forEach(button => {
             button.addEventListener('click', () => {
                 currentStep--;
@@ -104,9 +116,125 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // --- 4. FONCTION API : CHARGER LES DATES DISPONIBLES (AUTOMATIQUE) ---
+    function fetchNextDates(zip) {
+        const dateSelect = document.getElementById('date_select');
+        const timeSelect = document.getElementById('time_slots');
+        const loader = document.getElementById('slots-loader');
+        const confirmBtn = document.getElementById('confirm-btn');
+
+        // Reset de l'interface
+        if(dateSelect) dateSelect.innerHTML = '<option value="">Chargement...</option>';
+        if(timeSelect) {
+            timeSelect.innerHTML = '<option value="">-- Choisissez une date --</option>';
+            timeSelect.disabled = true;
+        }
+        if(confirmBtn) confirmBtn.disabled = true;
+
+        if(loader) loader.style.display = 'block';
+
+        // Appel API avec le ZIP uniquement (plus de date précise)
+        fetch(`public/api_slots.php?zip=${zip}`)
+            .then(response => response.json())
+            .then(data => {
+                if(loader) loader.style.display = 'none';
+
+                if (data.error) {
+                    if(dateSelect) dateSelect.innerHTML = `<option value="">Erreur : ${data.error}</option>`;
+                    alert(data.error);
+                } else if (data.days && data.days.length > 0) {
+                    // Sauvegarde des données reçues pour l'utilisation locale
+                    availableDaysData = data.days;
+
+                    // Remplissage du menu déroulant "Dates"
+                    if(dateSelect) {
+                        dateSelect.innerHTML = '<option value="">-- Choisissez une date disponible --</option>';
+                        data.days.forEach(day => {
+                            // day.date_iso = "2024-02-12"
+                            // day.date_pretty = "Lundi 12 Février"
+                            let opt = document.createElement('option');
+                            opt.value = day.date_iso;
+                            opt.text = `${day.date_pretty} (${day.slots.length} créneaux)`;
+                            dateSelect.add(opt);
+                        });
+                    }
+                } else {
+                    if(dateSelect) dateSelect.innerHTML = '<option value="">Aucune disponibilité trouvée</option>';
+                    alert("Aucune date disponible prochainement pour votre zone.");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                if(loader) loader.style.display = 'none';
+                if(dateSelect) dateSelect.innerHTML = '<option value="">Erreur technique</option>';
+            });
+    }
+
+    // --- 5. INTERACTION : CHOIX DE LA DATE ---
+    const dateSelect = document.getElementById('date_select');
+    if (dateSelect) {
+        dateSelect.addEventListener('change', function() {
+            const selectedDateIso = this.value;
+            const timeSelect = document.getElementById('time_slots');
+            const confirmBtn = document.getElementById('confirm-btn');
+
+            // Reset du champ Heure
+            if(timeSelect) {
+                timeSelect.innerHTML = '<option value="">-- Choisissez une heure --</option>';
+                timeSelect.disabled = true;
+            }
+            if(confirmBtn) confirmBtn.disabled = true;
+
+            if (!selectedDateIso) return;
+
+            // On retrouve les heures correspondant à la date choisie dans nos données
+            const dayData = availableDaysData.find(d => d.date_iso === selectedDateIso);
+
+            if (dayData && dayData.slots.length > 0) {
+                if(timeSelect) {
+                    timeSelect.disabled = false;
+                    dayData.slots.forEach(slot => {
+                        let opt = document.createElement('option');
+                        opt.value = slot;
+                        opt.text = slot;
+                        timeSelect.add(opt);
+                    });
+                }
+
+                // Mettre à jour le champ caché Date pour le formulaire PHP
+                const finalDateInput = document.getElementById('final_date');
+                if(finalDateInput) finalDateInput.value = selectedDateIso;
+            }
+        });
+    }
+
+    // --- 6. INTERACTION : CHOIX DE L'HEURE ---
+    const timeSelect = document.getElementById('time_slots');
+    if (timeSelect) {
+        timeSelect.addEventListener('change', function() {
+            const selectedTime = this.value;
+            const confirmBtn = document.getElementById('confirm-btn');
+
+            if (selectedTime) {
+                // Mettre à jour le champ caché Heure
+                const finalTimeInput = document.getElementById('final_time');
+                if(finalTimeInput) finalTimeInput.value = selectedTime;
+
+                // Activer le bouton de confirmation
+                if(confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.style.opacity = "1";
+                    confirmBtn.style.cursor = "pointer";
+                }
+            } else {
+                if(confirmBtn) confirmBtn.disabled = true;
+            }
+        });
+    }
 });
 
-// --- 4. CALCUL DES TARIFS & PAIEMENT ---
+// --- 7. CALCUL DES TARIFS & UTILITAIRES ---
 function calculatePrice(basePrice, paymentMethod) {
     if (paymentMethod === 'after') {
         return (basePrice * 1.03).toFixed(2);
@@ -146,112 +274,7 @@ function toggleWorksite(isSame) {
     }
 }
 
-// --- 5. LOGIQUE DE PLANIFICATION INTELLIGENTE (API + FLATPICKR) ---
-document.addEventListener('DOMContentLoaded', function() {
-    const zipInput = document.getElementById('wizard_zip');
-    const calendarInput = document.getElementById('calendar_picker');
-    const timeSelect = document.getElementById('time_slots');
-    const loader = document.getElementById('slot-loader');
-
-    let fp = null; // Instance Flatpickr
-
-    // 1. Initialisation de Flatpickr sur le champ date
-    if (calendarInput) {
-        fp = flatpickr(calendarInput, {
-            locale: "fr",
-            minDate: "today",
-            disable: [
-                function(date) {
-                    // Désactiver tout ce qui n'est pas un Lundi (1)
-                    return (date.getDay() !== 1);
-                }
-            ],
-            onChange: function(selectedDates, dateStr, instance) {
-                fetchSlots(dateStr);
-            }
-        });
-    }
-
-    // 2. Fonction pour appeler l'API PHP
-    function fetchSlots(dateStr) {
-        // --- CORRECTION BUG MAJEUR ---
-        // Si la date est vide (ex: effacement ou reset), on ne fait RIEN.
-        // Cela empêche l'appel API qui causait l'erreur "Données manquantes".
-        if (!dateStr) return;
-
-        const zip = zipInput.value;
-
-        // Sécurité : Si le zip est vide, on empêche la sélection
-        if (!zip) {
-            alert("Veuillez d'abord entrer votre Code Postal à l'étape précédente.");
-            if (fp) fp.clear();
-            return;
-        }
-
-        // Interface UI : Chargement
-        timeSelect.innerHTML = '<option value="">Chargement...</option>';
-        timeSelect.disabled = true;
-        if(loader) loader.style.display = 'block';
-
-        // Appel AJAX vers notre fichier PHP intermédiaire
-        fetch(`public/api_slots.php?date=${dateStr}&zip=${zip}`)
-            .then(response => response.json())
-            .then(data => {
-                if(loader) loader.style.display = 'none';
-                timeSelect.innerHTML = ''; // Clear options
-
-                if (data.error) {
-                    // Cas d'erreur (Zone interdite, Lundi complet, Mauvaise zone...)
-                    alert(data.error);
-                    if (fp) fp.clear(); // On efface la date invalide
-                    timeSelect.innerHTML = '<option value="">Date non disponible</option>';
-                } else if (data.slots && data.slots.length > 0) {
-                    // Cas Succès : On affiche les créneaux
-                    timeSelect.disabled = false;
-
-                    // Ajouter option par défaut
-                    let defaultOpt = document.createElement('option');
-                    defaultOpt.value = "";
-                    defaultOpt.text = "Choisir une heure";
-                    timeSelect.add(defaultOpt);
-
-                    // Ajouter les heures reçues de l'API
-                    data.slots.forEach(slot => {
-                        let opt = document.createElement('option');
-                        opt.value = slot;
-                        opt.text = slot;
-                        timeSelect.add(opt);
-                    });
-                } else {
-                    // Cas bizarre : pas d'erreur mais pas de slots (ex: tout est pris)
-                    timeSelect.innerHTML = '<option value="">Complet ce jour-là</option>';
-                    alert("Aucun créneau disponible pour ce lundi (Complet ou restrictions géographiques).");
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                if(loader) loader.style.display = 'none';
-                alert("Erreur technique : Impossible de récupérer les disponibilités. Veuillez réessayer.");
-            });
-    }
-
-    // 3. Réinitialiser le calendrier si on change le code postal après coup
-    if (zipInput) {
-        zipInput.addEventListener('change', function() {
-            // --- CORRECTION BUG ---
-            // On utilise clear(false) : le 'false' signifie "Ne déclenche PAS l'événement onChange".
-            // Donc fetchSlots() n'est PAS appelé, et on évite l'erreur.
-            if (fp) fp.clear(false);
-
-            if (timeSelect) {
-                timeSelect.innerHTML = '<option value="">-- Sélectionnez une date d\'abord --</option>';
-                timeSelect.disabled = true;
-            }
-        });
-    }
-});
-
-// --- 6. GESTION DES MODALES ---
+// --- 8. GESTION DES MODALES ---
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {

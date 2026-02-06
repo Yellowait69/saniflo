@@ -53,7 +53,6 @@ class HomeController {
                     $zip = (int)($_POST['zip'] ?? 0);
 
                     // --- 1. SÉCURITÉ : On vérifie la dispo via PlanningLogic ---
-                    // Cela remplace les vérifications manuelles précédentes pour être cohérent avec l'affichage
                     $logic = new PlanningLogic();
                     $slotsCheck = $logic->getAvailableSlots($dateRdv, $zip);
 
@@ -74,13 +73,22 @@ class HomeController {
                     // Données client pour Google Agenda et DB
                     $nom = htmlspecialchars(strip_tags(trim($_POST['lastname'])));
                     $prenom = htmlspecialchars(strip_tags(trim($_POST['firstname'])));
+                    $emailClient = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
                     $telephone = $_POST['tel'] ?? '';
                     $rue = $_POST['billing_street'] ?? '';
                     $ville = $_POST['billing_city'] ?? '';
                     $cp = $_POST['zip'] ?? '';
-                    $fullAddress = "$rue, $cp $ville"; // Adresse complète pour Google Maps
+                    $fullAddress = "$rue, $cp $ville";
                     $service = $_POST['service_type'] ?? 'Intervention';
-                    $descUser = $_POST['description'] ?? ''; // Commentaire client
+                    $descUser = $_POST['description'] ?? '';
+
+                    // Transformation du nom du service pour affichage propre
+                    $serviceMap = [
+                        'entretien_gaz_viessmann' => 'Entretien Gaz',
+                        'entretien_mazout_viessmann' => 'Entretien Mazout',
+                        'entretien_adoucisseur_bwt' => 'Entretien Adoucisseur'
+                    ];
+                    $serviceLabel = $serviceMap[$service] ?? ucwords(str_replace('_', ' ', $service));
 
                     // Requête SQL d'insertion
                     $sql = "INSERT INTO quote_requests (
@@ -102,7 +110,7 @@ class HomeController {
                     $stmt = $this->pdo->prepare($sql);
                     $stmt->execute([
                         $is_company, $_POST['company_name'] ?? null, $_POST['vat_number'] ?? null, $_POST['vat_regime'] ?? null, !empty($_POST['housing_year']) ? $_POST['housing_year'] : null,
-                        $prenom, $nom, filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL), $telephone,
+                        $prenom, $nom, $emailClient, $telephone,
                         $rue, $_POST['billing_box'] ?? null, $cp, $ville,
                         $worksite_same, $_POST['worksite_name'] ?? null, $_POST['worksite_street'] ?? null, $_POST['worksite_box'] ?? null, $_POST['worksite_zip'] ?? null, $_POST['worksite_city'] ?? null, $_POST['worksite_phone'] ?? null, $_POST['worksite_email'] ?? null,
                         $_POST['device_model'] ?? null, $_POST['device_serial'] ?? null, !empty($_POST['device_year']) ? $_POST['device_year'] : null, $_POST['device_kw'] ?? null,
@@ -110,13 +118,21 @@ class HomeController {
                     ]);
 
                     // --- 3. ENVOI VERS GOOGLE AGENDA ---
-                    // On prépare le texte qui ira dans la description de l'événement Google
-                    $googleDesc = "Client: $prenom $nom\nTél: $telephone\nService: $service\nNote: $descUser\n\n(Ajouté automatiquement depuis le site web)";
+                    // Description détaillée
+                    $googleDesc = "Client: $prenom $nom\n";
+                    $googleDesc .= "Service: $serviceLabel\n";
+                    $googleDesc .= "Tél: $telephone\n";
+                    $googleDesc .= "Email: $emailClient\n";
+                    $googleDesc .= "Adresse: $fullAddress\n";
+                    $googleDesc .= "Note: $descUser\n\n(Ajouté automatiquement depuis le site web)";
 
-                    // Appel à la fonction addEvent de PlanningLogic
+                    // Titre de l'événement modifié : On retire l'adresse pour éviter le doublon visuel
+                    // Format : En Ligne: Nom - Service - Tel - Email
+                    $eventSummary = "En Ligne: $nom $prenom - $serviceLabel - $telephone - $emailClient";
+
                     $logic->addEvent([
-                        'summary' => "RDV: $nom $prenom - $ville ($cp)",
-                        'location' => $fullAddress,
+                        'summary' => $eventSummary,
+                        'location' => $fullAddress, // C'est ici que l'adresse s'ajoute au champ "Lieu" de Google
                         'description' => $googleDesc,
                         'date' => $dateRdv,
                         'time' => $heureRdv

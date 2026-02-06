@@ -90,26 +90,58 @@ class PlanningLogic {
     }
 
     /**
-     * Logique interne pour un jour donné (extraite pour être plus propre)
+     * Logique interne pour un jour donné (CORRIGÉE: Sécurité PHP 8.1 & Regex simple)
      */
     private function calculateSlotsForDay($date, $events, $zoneType) {
         $totalAppointments = 0;
         $bookedSlots = [];
         $isBrusselsDay = false;
 
-        foreach ($events as $event) {
-            $summary = trim(strtoupper($event->getSummary()));
+        // IMPORTANT : On définit explicitement la timezone Bruxelles
+        // pour éviter que 08:00 ne soit lu comme 07:00 (UTC)
+        $tzBrussels = new DateTimeZone('Europe/Brussels');
 
+        foreach ($events as $event) {
+            // CORRECTION CRITIQUE : (string) force la conversion si c'est null, évitant le crash PHP 8.1+
+            $summary = trim(strtoupper((string)$event->getSummary()));
+            $location = trim(strtoupper((string)$event->getLocation()));
+
+            // 1. Vérification explicite (L'étiquette verte "ZONE BXL")
             if ($summary === 'ZONE BXL' || $summary === 'ZONE BRUXELLES') {
                 $isBrusselsDay = true;
                 continue;
             }
             if (strpos($summary, 'ANNUL') !== false) continue;
 
+            // 2. Traitement des Rendez-vous existants
             if ($event->start->dateTime) {
                 $totalAppointments++;
-                $start = date('H:i', strtotime($event->start->dateTime));
+
+                // Conversion explicite de l'heure Google vers l'heure locale
+                $dt = new DateTime($event->start->dateTime);
+                $dt->setTimezone($tzBrussels);
+                $start = $dt->format('H:i');
                 $bookedSlots[] = $start;
+
+                // --- NOUVEAU : AUTO-DÉTECTION SÉCURISÉE ---
+                // Regex simple : cherche 4 chiffres entourés de frontières de mots (espaces, virgules, début/fin)
+                // Cela détecte "1100" dans "Rue X, 1100 Bruxelles" ou "1100" tout court.
+                $zipCodeFound = null;
+
+                if (preg_match('/\b(\d{4})\b/', $summary, $matches)) {
+                    $zipCodeFound = (int)$matches[1];
+                }
+                elseif (preg_match('/\b(\d{4})\b/', $location, $matches)) {
+                    $zipCodeFound = (int)$matches[1];
+                }
+
+                // Si on a trouvé un CP, on vérifie si c'est une zone BXL
+                if ($zipCodeFound) {
+                    // BXL_STD (1000-1210) ou BXL_RESTRICTED (1500-1970)
+                    if (($zipCodeFound >= 1000 && $zipCodeFound <= 1210) || ($zipCodeFound >= 1500 && $zipCodeFound <= 1970)) {
+                        $isBrusselsDay = true;
+                    }
+                }
             }
         }
 
@@ -120,15 +152,18 @@ class PlanningLogic {
 
         // 2. Conflits Zone
         // Si Zone BXL demandée mais pas de marqueur (et agenda déjà entamé)
+        // Grâce à l'auto-détection corrigée, $isBrusselsDay sera true si "1100" est trouvé.
         if (($zoneType === 'BXL_STD' || $zoneType === 'BXL_RESTRICTED') && !$isBrusselsDay && $totalAppointments > 0) {
             return [];
         }
+
         // Si Zone BW demandée mais marqueur BXL présent
         if (($zoneType === 'BW_STD' || $zoneType === 'BW_RESTRICTED') && $isBrusselsDay) {
             return [];
         }
 
         // 3. Calcul créneaux
+        // array_diff retire les heures déjà prises (évite les doublons)
         $available = array_diff(self::SLOTS, $bookedSlots);
         $finalSlots = [];
 
@@ -141,13 +176,19 @@ class PlanningLogic {
             // Consécutifs BXL Centre
             if ($zoneType === 'BXL_STD') {
                 if ($totalAppointments === 0) {
+                    // Si aucun RDV, on oblige à prendre 8h00
                     if ($slot !== '08:00') continue;
                 } else {
+                    // Sinon, on oblige à prendre le créneau juste après le dernier
+                    // Comme $bookedSlots contient maintenant les bonnes heures (grâce au fix timezone),
+                    // max() retournera bien "08:00" et pas "07:00".
                     $lastBooked = max($bookedSlots);
                     $idx = array_search($lastBooked, self::SLOTS);
+
                     if ($idx !== false && isset(self::SLOTS[$idx + 1])) {
                         if ($slot !== self::SLOTS[$idx + 1]) continue;
                     } else {
+                        // Si le dernier rdv est le tout dernier créneau possible, plus rien n'est dispo
                         continue;
                     }
                 }
@@ -160,10 +201,7 @@ class PlanningLogic {
 
     // Méthode publique pour vérifier UN seul slot (utilisée lors de la confirmation POST)
     public function getAvailableSlots($date, $zip) {
-        // On réutilise la logique de masse mais pour un seul jour
-        // C'est un peu moins performant pour un seul check mais ça évite de dupliquer le code
-        $res = $this->getNextAvailabilities($zip, 12); // On cherche large pour être sûr de trouver la date
-
+        $res = $this->getNextAvailabilities($zip, 12);
         if (isset($res['error'])) return $res;
 
         foreach($res['days'] as $day) {
