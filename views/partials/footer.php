@@ -4,7 +4,6 @@
 
             <div class="footer-col brand-col">
                 <img src="img/logo-removebg-preview.png" alt="Saniflo Logo" class="footer-logo">
-
                 <p>Votre expert en confort thermique et sanitaire dans le Brabant Wallon depuis 1997. Qualité, service et expertise familiale.</p>
             </div>
 
@@ -18,7 +17,7 @@
                     <li><a href="#realisations">Réalisations</a></li>
                     <li><a href="#devis-wizard">Prendre Rendez-vous</a></li>
                     <li><a href="#contact">Contact</a></li>
-                    <li><a href="#avis-google">Avis Clients</a></li>
+                    <li><a href="#nb-avis-top">Avis Clients</a></li>
                 </ul>
             </div>
 

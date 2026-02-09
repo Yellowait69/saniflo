@@ -114,173 +114,356 @@ nav {
     color: var(--primary-dark);
 }
 
-/* --- HERO SECTION (Version 2 Colonnes avec Agréments Divisés) --- */
+/* --- HERO SECTION (Version 3 Colonnes pour dégager le centre) --- */
+
 header#accueil {
+
     height: 90vh;
+
     min-height: 600px;
+
     position: relative;
-    /* Dégradé adapté aux nouveaux bleus */
-    background: linear-gradient(135deg, rgba(0, 74, 143, 0.85), rgba(0, 112, 205, 0.7)), url('../img/IMG_4805.JPEG') center/cover;
+
+    /* On centre bien l'image pour que les visages restent au milieu */
+
+    background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('../img/IMG_4805.JPEG') center/cover;
+
     display: flex;
+
     align-items: center;
+
     padding: 0 20px;
+
     color: white;
+
 }
 
-/* Grille pour séparer Gauche (Texte) et Droite (Cadre Agréments) */
+
+
+/* Grille mise à jour : Gauche (Texte) | Milieu (Vide pour visages) | Droite (Agréments) */
+
 .hero-grid {
+
     display: grid;
-    grid-template-columns: 1.2fr 0.8fr; /* Texte plus large que le cadre */
-    gap: 50px;
+
+    grid-template-columns: 1.2fr 0.7fr 1fr;
+
+    gap: 30px;
+
     align-items: center;
+
     width: 100%;
+
 }
+
+
 
 /* -- Colonne GAUCHE : Texte -- */
+
 .hero-text-side {
+
     text-align: left;
+
 }
+
+
 
 .badge {
+
     background: rgba(255,255,255,0.2);
+
     padding: 5px 15px;
+
     border-radius: 50px;
+
     border: 1px solid rgba(255,255,255,0.3);
+
     font-size: 0.9rem;
+
     margin-bottom: 20px;
+
     display: inline-block;
+
     text-transform: uppercase;
+
     letter-spacing: 1px;
+
 }
+
+
 
 .hero-content h1 {
+
     font-size: 3.5rem;
+
     font-weight: 800;
+
     line-height: 1.2;
+
     margin-bottom: 20px;
+
 }
+
+
 
 .hero-buttons {
+
     display: flex;
+
     gap: 15px;
-    justify-content: flex-start; /* Alignement gauche */
+
+    justify-content: flex-start;
+
     margin-top: 30px;
+
 }
+
+
 
 .btn-primary {
+
     background: var(--accent-yellow);
+
     color: var(--primary-dark);
+
     padding: 15px 35px;
+
     border-radius: 50px;
+
     text-decoration: none;
+
     font-weight: 600;
+
     transition: transform 0.3s, background 0.3s;
+
     box-shadow: 0 5px 15px rgba(255, 196, 0, 0.4);
+
     border: none;
+
     cursor: pointer;
+
 }
+
+
 
 .btn-secondary {
+
     border: 2px solid rgba(255,255,255,0.4);
+
     color: white;
+
     padding: 15px 35px;
+
     border-radius: 50px;
+
     text-decoration: none;
+
     font-weight: 600;
+
     transition: background 0.3s, color 0.3s;
+
 }
+
+
 
 .btn-primary:hover {
+
     transform: translateY(-3px);
+
     background: var(--accent-hover);
+
 }
+
+
 
 .btn-secondary:hover {
+
     background: white;
+
     color: var(--primary-dark);
+
 }
+
+
+
+/* Optionnel : Ajustement pour écrans moyens (tablettes) */
+
+@media (max-width: 1100px) {
+
+    .hero-grid {
+
+        grid-template-columns: 1.2fr 0.4fr 1fr;
+
+        gap: 15px;
+
+    }
+
+}
+
+
 
 /* -- Colonne DROITE : Cadre Agréments -- */
+
 .hero-certs-box {
+
     background: rgba(255, 255, 255, 0.1); /* Fond semi-transparent */
+
     backdrop-filter: blur(10px); /* Effet verre dépoli */
+
     border: 1px solid rgba(255, 255, 255, 0.2);
+
     padding: 25px;
+
     border-radius: var(--radius);
+
     max-width: 400px;
+
     margin-left: auto; /* Pousse à droite */
+
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+
 }
+
+
 
 .hero-certs-box h3 {
+
     font-size: 1.2rem;
+
     margin-bottom: 15px;
+
     border-bottom: 2px solid var(--accent-yellow);
+
     padding-bottom: 10px;
+
     display: inline-block;
+
     color: white;
+
 }
+
+
 
 .hero-certs-list {
+
     max-height: 350px; /* Légèrement augmenté pour les titres de régions */
+
     overflow-y: auto;
+
     padding-right: 10px;
+
 }
+
+
 
 /* Scrollbar personnalisée */
+
 .hero-certs-list::-webkit-scrollbar { width: 5px; }
+
 .hero-certs-list::-webkit-scrollbar-thumb { background: var(--accent-yellow); border-radius: 10px; }
 
+
+
 /* Division par régions */
+
 .region-label {
+
     font-size: 0.75rem;
+
     text-transform: uppercase;
+
     color: var(--accent-yellow);
+
     letter-spacing: 1px;
+
     margin: 15px 0 8px 5px;
+
     border-left: 2px solid var(--accent-yellow);
+
     padding-left: 8px;
+
     font-weight: 600;
+
 }
+
+
 
 .cert-group:first-child .region-label {
+
     margin-top: 0;
+
 }
+
+
 
 .hero-cert-item {
+
     display: flex;
+
     gap: 12px;
+
     margin-bottom: 8px;
+
     align-items: center;
+
     background: rgba(0, 0, 0, 0.2);
+
     padding: 8px 12px;
+
     border-radius: 8px;
+
     transition: transform 0.2s;
+
 }
+
+
 
 .hero-cert-item:hover {
+
     transform: translateX(5px);
+
     background: rgba(0, 0, 0, 0.3);
+
 }
+
+
 
 .cert-icon {
+
     color: var(--accent-yellow);
+
     font-size: 1rem;
+
 }
+
+
 
 .hero-cert-item h5 {
+
     font-size: 0.85rem;
+
     font-weight: 600;
+
     margin: 0;
+
     line-height: 1.2;
+
     color: white;
+
 }
 
+
+
 .hero-cert-item p {
+
     font-size: 0.75rem;
+
     margin: 0;
+
     opacity: 0.8;
+
     font-family: monospace;
+
 }
 
 /* --- À PROPOS & TEAM --- */

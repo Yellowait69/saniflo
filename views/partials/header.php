@@ -10,7 +10,7 @@
         <li><a href="tel:0495501717" class="btn-nav" style="background-color: var(--accent-yellow); color: var(--primary-dark) !important;">
                 <i class="fas fa-phone-alt"></i> 0495 50 17 17</a>
         </li>
-        <li><a href="#avis-google">Avis</a></li>
+        <li><a href="#nb-avis-top">Avis</a></li>
     </ul>
     <div class="burger"><i class="fas fa-bars"></i></div>
 </nav>
@@ -63,8 +63,9 @@
 
                 </div>
             </div>
-
         </div>
+
+        <div class="hero-spacer"></div>
 
         <div class="hero-certs-box">
             <h3><i class="fas fa-certificate"></i> Agréments</h3>
