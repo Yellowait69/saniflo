@@ -46,8 +46,8 @@
                             <i class="fas fa-file-invoice-dollar" style="font-size: 1.2rem; color: white;"></i>
                         </div>
                         <div>
-                            <span style="display: block; font-weight: 700; font-size: 1rem;">Demander un Devis Gratuit</span>
-                            <span style="display: block; font-size: 0.8rem; opacity: 0.9;">Remplacement de chaudière, nouvelle installation...</span>
+                            <span style="display: block; font-weight: 700; font-size: 1rem;">Demander un Devis Gratuit : Estimation</span>
+                            <span style="display: block; font-size: 0.8rem; opacity: 0.9;">Installation/remplacement de chaudière Viessmann</span>
                         </div>
                     </a>
 
@@ -56,8 +56,8 @@
                             <i class="fas fa-tools" style="font-size: 1.1rem; color: white;"></i>
                         </div>
                         <div>
-                            <span style="display: block; font-weight: 600; font-size: 1rem;">Dépannage & Autres demandes</span>
-                            <span style="display: block; font-size: 0.8rem; opacity: 0.7;">Panne, urgence, fuite ou question générale</span>
+                            <span style="display: block; font-weight: 600; font-size: 1rem;">Contact pour les autres demandes</span>
+                            <span style="display: block; font-size: 0.8rem; opacity: 0.7;">Renseignements, autres demandes d'intervention,...</span>
                         </div>
                     </a>
 
