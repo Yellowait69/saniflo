@@ -20,8 +20,21 @@
     <div class="container hero-grid">
 
         <div class="hero-text-side">
-            <span class="badge">Depuis 1997</span>
-            <h1>Votre Expert en <br>Chauffage & Sanitaire</h1>
+            <span class="badge" style="
+                position: absolute;
+                top: 50px;           /* Ajustez cette valeur pour monter/descendre le badge */
+                left: 50%;            /* Place le début du badge à 50% de la largeur */
+                transform: translateX(-50%); /* Recule le badge de 50% de sa propre taille pour être parfaitement centré */
+                font-size: 1.2rem;
+                font-weight: 700;
+                padding: 8px 25px;
+                letter-spacing: 2px;
+                z-index: 99;          /* S'assure qu'il est au-dessus */
+                white-space: nowrap;  /* Empêche le texte de se couper */
+            ">Depuis 1997</span>
+
+            <h1 style="margin-top: 50px;">Votre Expert en <br>Chauffage & Sanitaire</h1>
+
             <p>Installation, rénovation et dépannage dans tout le Brabant Wallon. <br>Une expertise dirigée par <strong>Jean-François Dengis</strong> et <strong>Florence Lambinon</strong>.</p>
 
             <div style="margin-top: 35px; padding: 25px; background: rgba(0, 0, 0, 0.4); border-radius: 12px; border-left: 4px solid var(--accent-yellow); backdrop-filter: blur(8px);">
@@ -79,17 +92,23 @@
 
                     foreach ($order as $regionName):
                         if (isset($certsByRegion[$regionName])): ?>
-                            <div class="cert-group">
-                                <h4 class="region-label"><?= htmlspecialchars($regionName) ?></h4>
-                                <?php foreach ($certsByRegion[$regionName] as $cert): ?>
-                                    <div class="hero-cert-item">
-                                        <div class="cert-icon"><i class="fas fa-check-circle"></i></div>
-                                        <div>
-                                            <h5><?= htmlspecialchars($cert['title']) ?></h5>
-                                            <p><?= htmlspecialchars($cert['number']) ?></p>
+                            <div class="cert-group" style="margin-bottom: 5px;">
+                                <div class="region-header" onclick="toggleCertRegion(this)" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                    <h4 class="region-label" style="margin: 0; pointer-events: none;"><?= htmlspecialchars($regionName) ?></h4>
+                                    <i class="fas fa-chevron-down region-arrow" style="font-size: 0.8rem; transition: transform 0.3s;"></i>
+                                </div>
+
+                                <div class="region-content" style="display: none; padding-left: 10px; margin-top: 5px; border-left: 2px solid rgba(255,196,0,0.3);">
+                                    <?php foreach ($certsByRegion[$regionName] as $cert): ?>
+                                        <div class="hero-cert-item">
+                                            <div class="cert-icon"><i class="fas fa-check-circle"></i></div>
+                                            <div>
+                                                <h5><?= htmlspecialchars($cert['title']) ?></h5>
+                                                <p><?= htmlspecialchars($cert['number']) ?></p>
+                                            </div>
                                         </div>
-                                    </div>
-                                <?php endforeach; ?>
+                                    <?php endforeach; ?>
+                                </div>
                             </div>
                         <?php endif;
                     endforeach; ?>
@@ -100,3 +119,22 @@
         </div>
     </div>
 </header>
+
+<script>
+    function toggleCertRegion(headerElement) {
+        // Sélectionne le contenu qui suit juste après le header cliqué
+        var content = headerElement.nextElementSibling;
+        var arrow = headerElement.querySelector('.region-arrow');
+
+        // Bascule l'affichage
+        if (content.style.display === "none") {
+            content.style.display = "block";
+            if(arrow) arrow.style.transform = "rotate(180deg)";
+            headerElement.style.background = "rgba(255,255,255,0.05)";
+        } else {
+            content.style.display = "none";
+            if(arrow) arrow.style.transform = "rotate(0deg)";
+            headerElement.style.background = "transparent";
+        }
+    }
+</script>

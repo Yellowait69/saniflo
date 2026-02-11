@@ -114,356 +114,277 @@ nav {
     color: var(--primary-dark);
 }
 
-/* --- HERO SECTION (Version 3 Colonnes pour dégager le centre) --- */
-
+/* --- HERO SECTION (Version Pleine Largeur / Alignement Gauche) --- */
 header#accueil {
-
     height: 90vh;
-
     min-height: 600px;
-
     position: relative;
-
-    /* On centre bien l'image pour que les visages restent au milieu */
-
     background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('../img/IMG_4805.JPEG') center/cover;
-
     display: flex;
-
     align-items: center;
-
-    padding: 0 20px;
-
     color: white;
-
+    /* MODIF : On retire le padding du parent pour permettre le collage aux bords */
+    padding: 0;
 }
 
-
-
-/* Grille mise à jour : Gauche (Texte) | Milieu (Vide pour visages) | Droite (Agréments) */
-
+/* Grille modifiée pour ignorer les contraintes de la classe .container */
 .hero-grid {
-
     display: grid;
-
-    grid-template-columns: 1.2fr 0.7fr 1fr;
-
-    gap: 30px;
-
+    /* Colonne Texte (45%) | Espace Visages (15%) | Colonne Agréments (40%) */
+    grid-template-columns: 45% 20% 35%;
     align-items: center;
-
     width: 100%;
 
+    /* MODIF IMPORTANTE : ON ÉCRASE LES RÈGLES DE .container */
+    max-width: 100% !important;    /* Prend toute la largeur de l'écran */
+    margin: 0 !important;          /* Annule le centrage automatique */
+    padding: 0 !important;         /* Annule le padding par défaut */
 }
-
-
 
 /* -- Colonne GAUCHE : Texte -- */
-
 .hero-text-side {
-
     text-align: left;
-
+    /* On ajoute une marge de 5% pour ne pas que le texte touche le bord de l'écran */
+    padding-left: 5%;
+    padding-right: 20px;
+    box-sizing: border-box;
+    /* On s'assure que le texte ne s'étale pas trop */
+    max-width: 650px;
+    margin-top: -50px;
 }
-
-
 
 .badge {
-
     background: rgba(255,255,255,0.2);
-
     padding: 5px 15px;
-
     border-radius: 50px;
-
     border: 1px solid rgba(255,255,255,0.3);
-
     font-size: 0.9rem;
-
     margin-bottom: 20px;
-
     display: inline-block;
-
     text-transform: uppercase;
-
     letter-spacing: 1px;
-
 }
 
-
-
-.hero-content h1 {
-
-    font-size: 3.5rem;
-
+.hero-text-side h1 {
+    font-size: 2.5rem;
     font-weight: 800;
-
     line-height: 1.2;
-
     margin-bottom: 20px;
-
 }
-
-
 
 .hero-buttons {
-
     display: flex;
-
     gap: 15px;
-
     justify-content: flex-start;
-
     margin-top: 30px;
-
 }
-
-
 
 .btn-primary {
-
     background: var(--accent-yellow);
-
     color: var(--primary-dark);
-
     padding: 15px 35px;
-
     border-radius: 50px;
-
     text-decoration: none;
-
     font-weight: 600;
-
     transition: transform 0.3s, background 0.3s;
-
     box-shadow: 0 5px 15px rgba(255, 196, 0, 0.4);
-
     border: none;
-
     cursor: pointer;
-
 }
-
-
 
 .btn-secondary {
-
     border: 2px solid rgba(255,255,255,0.4);
-
     color: white;
-
     padding: 15px 35px;
-
     border-radius: 50px;
-
     text-decoration: none;
-
     font-weight: 600;
-
     transition: background 0.3s, color 0.3s;
-
 }
-
-
 
 .btn-primary:hover {
-
     transform: translateY(-3px);
-
     background: var(--accent-hover);
-
 }
-
-
 
 .btn-secondary:hover {
-
     background: white;
-
     color: var(--primary-dark);
-
 }
-
-
-
-/* Optionnel : Ajustement pour écrans moyens (tablettes) */
-
-@media (max-width: 1100px) {
-
-    .hero-grid {
-
-        grid-template-columns: 1.2fr 0.4fr 1fr;
-
-        gap: 15px;
-
-    }
-
-}
-
-
 
 /* -- Colonne DROITE : Cadre Agréments -- */
-
 .hero-certs-box {
-
-    background: rgba(255, 255, 255, 0.1); /* Fond semi-transparent */
-
-    backdrop-filter: blur(10px); /* Effet verre dépoli */
-
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
-
     padding: 25px;
-
     border-radius: var(--radius);
+    width: 400px;
+    max-width: 100%;
 
-    max-width: 400px;
+    /* MODIFICATION ICI : On centre la boite dans sa zone de grille */
+    margin-left: auto;
+    margin-right: auto;
 
-    margin-left: auto; /* Pousse à droite */
+    /* Si vous voulez qu'elle soit collée à droite, mettez margin-left: auto; margin-right: 50px; (en pixels fixes) */
+
+    margin-top: 200px; /* Votre marge du haut */
 
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-
 }
-
-
 
 .hero-certs-box h3 {
-
     font-size: 1.2rem;
-
     margin-bottom: 15px;
-
     border-bottom: 2px solid var(--accent-yellow);
-
     padding-bottom: 10px;
-
     display: inline-block;
-
     color: white;
-
 }
-
-
 
 .hero-certs-list {
-
-    max-height: 350px; /* Légèrement augmenté pour les titres de régions */
-
+    max-height: 350px;
     overflow-y: auto;
-
     padding-right: 10px;
-
 }
-
-
-
-/* Scrollbar personnalisée */
 
 .hero-certs-list::-webkit-scrollbar { width: 5px; }
-
 .hero-certs-list::-webkit-scrollbar-thumb { background: var(--accent-yellow); border-radius: 10px; }
 
-
-
-/* Division par régions */
-
 .region-label {
-
     font-size: 0.75rem;
-
     text-transform: uppercase;
-
     color: var(--accent-yellow);
-
     letter-spacing: 1px;
-
     margin: 15px 0 8px 5px;
-
     border-left: 2px solid var(--accent-yellow);
-
     padding-left: 8px;
-
     font-weight: 600;
-
 }
-
-
 
 .cert-group:first-child .region-label {
-
     margin-top: 0;
-
 }
-
-
 
 .hero-cert-item {
-
     display: flex;
-
     gap: 12px;
-
     margin-bottom: 8px;
-
     align-items: center;
-
     background: rgba(0, 0, 0, 0.2);
-
     padding: 8px 12px;
-
     border-radius: 8px;
-
     transition: transform 0.2s;
-
 }
-
-
 
 .hero-cert-item:hover {
-
     transform: translateX(5px);
-
     background: rgba(0, 0, 0, 0.3);
-
 }
-
-
 
 .cert-icon {
-
     color: var(--accent-yellow);
-
     font-size: 1rem;
-
 }
-
-
 
 .hero-cert-item h5 {
-
     font-size: 0.85rem;
-
     font-weight: 600;
-
     margin: 0;
-
     line-height: 1.2;
-
     color: white;
-
 }
 
-
-
 .hero-cert-item p {
-
     font-size: 0.75rem;
-
     margin: 0;
-
     opacity: 0.8;
-
     font-family: monospace;
+}
+/* --- ACCORDÉON AGRÉMENTS --- */
 
+.region-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 10px 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    transition: background 0.3s;
+    border-radius: 4px;
+}
+
+.region-header:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+/* On enlève la marge par défaut du h4 car le header a son propre padding */
+.region-label {
+    margin: 0 !important;
+    border-left: none !important; /* On retire la bordure gauche précédente si souhaité */
+    padding-left: 0 !important;
+    font-size: 0.9rem;
+    color: var(--accent-yellow);
+}
+
+.region-arrow {
+    color: white;
+    font-size: 0.8rem;
+    transition: transform 0.3s ease;
+}
+
+/* Classe ajoutée via JS quand ouvert */
+.region-header.active .region-arrow {
+    transform: rotate(180deg);
+    color: var(--accent-yellow);
+}
+
+/* Le contenu déroulant */
+.region-content {
+    padding-top: 10px;
+    padding-left: 10px;
+    border-left: 2px solid rgba(255, 196, 0, 0.3); /* Ligne guide visuelle */
+    margin-left: 10px;
+    margin-bottom: 10px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+/* --- Responsive Adaptatif --- */
+@media (max-width: 1200px) {
+    .hero-grid {
+        /* Sur écran moyen, on ajuste les proportions */
+        grid-template-columns: 50% 5% 45%;
+    }
+}
+
+@media (max-width: 900px) {
+    header#accueil {
+        height: auto;
+        padding: 100px 0 60px;
+    }
+    .hero-grid {
+        display: flex;
+        flex-direction: column;
+        padding: 0 20px !important; /* On remet les marges de sécurité sur mobile */
+    }
+    .hero-text-side {
+        padding-left: 0;
+        text-align: center;
+        max-width: 100%;
+    }
+    .hero-buttons {
+        justify-content: center;
+    }
+    .hero-certs-box {
+        margin-right: auto; /* On recentre la box agréments */
+        margin-left: auto;
+    }
+    /* On cache le spacer sur mobile car inutile en flex column */
+    .hero-spacer { display: none; }
 }
 
 /* --- À PROPOS & TEAM --- */
