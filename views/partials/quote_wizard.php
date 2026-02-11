@@ -179,10 +179,10 @@
 
                     <div class="payment-selection" style="margin-top:20px; border-top: 1px solid #eee; padding-top: 20px;">
                         <h4>Mode de paiement</h4>
-                        <div style="display: flex; gap: 20px;">
+                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                             <label class="radio-option">
-                                <input type="radio" name="payment_method" value="direct" checked onchange="updateWizardPrice()">
-                                <span>Direct (Sur place)</span>
+                                <input type="radio" name="payment_method" value="stripe" checked onchange="updateWizardPrice()">
+                                <span>Paiement en ligne (Carte Bancaire)</span>
                             </label>
                             <label class="radio-option">
                                 <input type="radio" name="payment_method" value="after" onchange="updateWizardPrice()">

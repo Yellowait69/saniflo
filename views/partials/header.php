@@ -81,7 +81,7 @@
         <div class="hero-spacer"></div>
 
         <div class="hero-certs-box">
-            <h3><i class="fas fa-certificate"></i> Agréments</h3>
+            <h3><i class="fas fa-graduation-cap"></i> Agréments</h3>
             <div class="hero-certs-list">
                 <?php if (!empty($certifications)):
                     $order = ['Général', 'Wallonie', 'Bruxelles', 'Flandre'];
