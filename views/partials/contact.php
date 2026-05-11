@@ -41,15 +41,19 @@
 
             <div class="contact-form">
                 <?= $message_status ?? '' ?>
+
                 <form action="index.php#contact" method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+
                     <div class="form-group">
                         <input type="text" name="nom" placeholder="Votre Nom" required>
                     </div>
                     <div class="form-group">
                         <input type="email" name="email" placeholder="Votre Email" required>
                     </div>
+
                     <div class="form-group">
-                        <input type="tel" name="tel" placeholder="Votre Téléphone">
+                        <input type="tel" name="tel" placeholder="Votre Téléphone (ex: 0495 12 34 56)" pattern="[0-9\+\s\-\.]{8,15}" title="Veuillez entrer un numéro de téléphone valide (8 à 15 caractères)">
                     </div>
 
                     <div class="form-group">

@@ -33,8 +33,16 @@ try {
     echo json_encode($result);
 
 } catch (Exception $e) {
-    // En cas d'erreur technique
+    // --- CORRECTION DE SÉCURITÉ ---
+
+    // 1. On enregistre la VRAIE erreur dans les logs secrets du serveur (consultables sur votre panel Alwaysdata)
+    error_log("Erreur API Slots : " . $e->getMessage() . " dans " . $e->getFile() . " à la ligne " . $e->getLine());
+
+    // 2. On renvoie un message GÉNÉRIQUE et inoffensif au navigateur du client
     http_response_code(500);
-    echo json_encode(['error' => 'Erreur serveur: ' . $e->getMessage()]);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Une erreur technique est survenue lors de la recherche des disponibilités. Veuillez réessayer plus tard.'
+    ]);
 }
 ?>

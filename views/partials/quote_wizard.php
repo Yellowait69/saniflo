@@ -21,6 +21,8 @@
 
             <form id="wizardForm" action="index.php#devis-wizard" method="POST">
 
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+
                 <div class="step active-step">
                     <h3><i class="fas fa-user-circle"></i> Votre Profil</h3>
 
@@ -115,7 +117,10 @@
                         <div class="form-group"><input type="text" name="firstname" placeholder="Prénom" required></div>
                     </div>
                     <div class="form-group"><input type="email" name="email" placeholder="E-mail" required></div>
-                    <div class="form-group"><input type="tel" name="tel" placeholder="GSM" required></div>
+
+                    <div class="form-group">
+                        <input type="tel" name="tel" placeholder="GSM (ex: 0495 12 34 56)" pattern="[0-9\+\s\-\.]{8,15}" title="Veuillez entrer un numéro de téléphone valide (8 à 15 caractères)" required>
+                    </div>
 
                     <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px;">
                         <input type="text" name="billing_street" placeholder="Rue et numéro" required>

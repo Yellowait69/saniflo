@@ -27,7 +27,6 @@ $tablesConfig = [
             'name' => ['label' => 'Nom', 'type' => 'text'],
             'role' => ['label' => 'Rôle', 'type' => 'text'],
             'bio' => ['label' => 'Biographie', 'type' => 'textarea'],
-            // Mise à jour pour permettre l'upload aussi pour l'équipe
             'image_url' => ['label' => 'Photo', 'type' => 'file']
         ]
     ],
@@ -46,7 +45,6 @@ $tablesConfig = [
             'city' => ['label' => 'Ville', 'type' => 'text'],
             'category' => ['label' => 'Catégorie (ex: Chauffage)', 'type' => 'text'],
             'date_completion' => ['label' => 'Date Fin', 'type' => 'date'],
-            // CHANGEMENT ICI : Type 'file' pour activer l'upload
             'image_url' => ['label' => 'Photo du chantier', 'type' => 'file'],
             'description' => ['label' => 'Description détaillée', 'type' => 'textarea']
         ]
@@ -81,12 +79,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // AJOUT OU ÉDITION
         $data = [];
-        $fields = array_keys($config['fields']); // Clés : title, city, image_url...
+        $fields = array_keys($config['fields']);
         $placeholders = [];
         $updateStr = [];
         $insertFields = [];
 
-        // Récupération de l'item existant (pour garder l'image si on ne la change pas)
+        // Récupération de l'item existant
         $existingItem = [];
         if ($id) {
             $stmt = $pdo->prepare("SELECT * FROM $currentTable WHERE id = ?");
@@ -107,31 +105,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } elseif (!$id) {
                     die("Mot de passe requis pour nouvel utilisateur");
                 }
-                // Si vide en édition, on ignore (garde l'ancien)
                 continue;
             }
 
-            // 2. GESTION UPLOAD FICHIER (IMAGES)
+            // 2. GESTION SÉCURISÉE UPLOAD FICHIER (IMAGES)
             if ($fieldConfig['type'] === 'file') {
-                // Valeur par défaut = ancienne image
                 $val = $existingItem[$f] ?? '';
 
-                // Si un fichier est envoyé sans erreur
                 if (isset($_FILES[$f]) && $_FILES[$f]['error'] === UPLOAD_ERR_OK) {
                     $tmpName = $_FILES[$f]['tmp_name'];
-                    $name = basename($_FILES[$f]['name']);
-                    $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-                    $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
 
-                    if (in_array($ext, $allowed)) {
-                        // Nom unique pour éviter les conflits
-                        $newName = 'portfolio_' . uniqid() . '.' . $ext;
+                    // --- VÉRIFICATION DE SÉCURITÉ ---
+                    // a. Vérification basique (extension)
+                    $fileName = $_FILES[$f]['name'];
+                    $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+                    $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+
+                    // b. Vérification avancée (Type MIME réel)
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $mimeType = finfo_file($finfo, $tmpName);
+                    finfo_close($finfo);
+
+                    $allowedMimeTypes = [
+                        'image/jpeg',
+                        'image/png',
+                        'image/webp',
+                        'image/gif'
+                    ];
+
+                    // On s'assure que l'extension ET le type MIME sont valides
+                    if (in_array($ext, $allowedExtensions) && in_array($mimeType, $allowedMimeTypes)) {
+
+                        // Nom unique, long et sécurisé
+                        $newName = 'portfolio_' . uniqid('', true) . '.' . $ext;
 
                         // Dossier de destination : public/img/portfolio/
-                        // On remonte d'un niveau (../) car on est dans admin/
                         $targetDir = __DIR__ . '/../public/img/portfolio/';
 
-                        // Création du dossier s'il n'existe pas
                         if (!is_dir($targetDir)) {
                             mkdir($targetDir, 0755, true);
                         }
@@ -139,12 +149,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $destination = $targetDir . $newName;
 
                         if (move_uploaded_file($tmpName, $destination)) {
-                            // On stocke le chemin relatif pour l'affichage web
                             $val = 'img/portfolio/' . $newName;
+                        } else {
+                            $msg = "Erreur lors de l'enregistrement de l'image sur le serveur.";
                         }
                     } else {
-                        // Erreur extension (on pourrait ajouter un message d'erreur ici)
+                        $msg = "Le fichier uploadé n'est pas une image valide (falsification détectée ou format non supporté).";
                     }
+                } elseif (isset($_FILES[$f]) && $_FILES[$f]['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $msg = "Erreur lors du téléchargement de l'image (Code d'erreur: " . $_FILES[$f]['error'] . ").";
                 }
 
                 $data[] = $val;
@@ -152,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $placeholders[] = '?';
                 $updateStr[] = "$f = ?";
 
-                continue; // On passe au champ suivant
+                continue;
             }
 
             // 3. GESTION NORMALE (TEXTE, DATE, ETC.)
@@ -163,25 +176,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $updateStr[] = "$f = ?";
         }
 
-        try {
-            if ($id) {
-                // UPDATE
-                $data[] = $id; // Pour le WHERE
-                $sql = "UPDATE $currentTable SET " . implode(', ', $updateStr) . " WHERE id = ?";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($data);
-                $msg = "Modification enregistrée.";
-                $action = 'list';
-            } else {
-                // INSERT
-                $sql = "INSERT INTO $currentTable (" . implode(', ', $insertFields) . ") VALUES (" . implode(', ', $placeholders) . ")";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($data);
-                $msg = "Nouvel élément ajouté.";
-                $action = 'list';
+        // Si l'upload n'a pas généré d'erreur (sinon $msg serait rempli et empêcherait l'insertion si on gérait mieux, mais on va simplement afficher l'erreur si besoin)
+        if (empty($msg) || $msg === "Élément supprimé avec succès.") {
+            try {
+                if ($id) {
+                    // UPDATE
+                    $data[] = $id;
+                    $sql = "UPDATE $currentTable SET " . implode(', ', $updateStr) . " WHERE id = ?";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($data);
+                    $msg = "Modification enregistrée.";
+                    $action = 'list';
+                } else {
+                    // INSERT
+                    $sql = "INSERT INTO $currentTable (" . implode(', ', $insertFields) . ") VALUES (" . implode(', ', $placeholders) . ")";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($data);
+                    $msg = "Nouvel élément ajouté.";
+                    $action = 'list';
+                }
+            } catch (Exception $e) {
+                $msg = "Erreur lors de l'enregistrement en base de données : " . $e->getMessage();
             }
-        } catch (Exception $e) {
-            $msg = "Erreur : " . $e->getMessage();
         }
     }
 }
@@ -202,7 +218,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <h2>Gestion : <?= htmlspecialchars($config['name']) ?></h2>
 
     <?php if($msg): ?>
-        <div style="background:#d4edda; color:#155724; padding:15px; border-radius:5px; margin-bottom:20px; border:1px solid #c3e6cb;">
+        <div style="background: <?= strpos($msg, 'Erreur') !== false || strpos($msg, 'valide') !== false ? '#f8d7da' : '#d4edda' ?>;
+                color: <?= strpos($msg, 'Erreur') !== false || strpos($msg, 'valide') !== false ? '#721c24' : '#155724' ?>;
+                padding:15px; border-radius:5px; margin-bottom:20px;
+                border:1px solid <?= strpos($msg, 'Erreur') !== false || strpos($msg, 'valide') !== false ? '#f5c6cb' : '#c3e6cb' ?>;">
             <?= htmlspecialchars($msg) ?>
         </div>
     <?php endif; ?>
@@ -269,7 +288,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <thead>
                 <tr>
                     <?php
-                    // On affiche les 3 premières colonnes
                     $i=0;
                     foreach($config['fields'] as $k => $v) {
                         if($i < 3 && $v['type'] != 'password') {
@@ -292,7 +310,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             if($i < 3 && $v['type'] != 'password') {
                                 $val = $row[$k] ?? '';
 
-                                // Si c'est un fichier image, on affiche une miniature
                                 if ($v['type'] === 'file' && !empty($val)) {
                                     echo "<td><img src='../public/" . htmlspecialchars($val) . "' style='height: 50px; width: auto; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'></td>";
                                 } else {
