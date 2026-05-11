@@ -1,16 +1,16 @@
 <nav>
     <div class="logo">
-        <a href="#"><img src="img/logo-saniflo.png" alt="Saniflo SRL Logo"></a>
+        <a href="index.php"><img src="img/logo-saniflo.png" alt="Saniflo SRL Logo"></a>
     </div>
     <ul class="nav-links">
-        <li><a href="#accueil">Accueil</a></li>
-        <li><a href="#apropos">À Propos</a></li>
-        <li><a href="#services">Services</a></li>
-        <li><a href="#realisations">Réalisations</a></li>
+        <li><a href="index.php#accueil">Accueil</a></li>
+        <li><a href="index.php#apropos">À Propos</a></li>
+        <li><a href="index.php#services">Services</a></li>
+        <li><a href="index.php#realisations">Réalisations</a></li>
         <li><a href="tel:0495501717" class="btn-nav" style="background-color: var(--accent-yellow); color: var(--primary-dark) !important;">
                 <i class="fas fa-phone-alt"></i> 0495 50 17 17</a>
         </li>
-        <li><a href="#nb-avis-top">Avis</a></li>
+        <li><a href="index.php#nb-avis-top">Avis</a></li>
     </ul>
     <div class="burger"><i class="fas fa-bars"></i></div>
 </nav>
@@ -22,15 +22,15 @@
         <div class="hero-text-side">
             <span class="badge" style="
                 position: absolute;
-                top: 50px;           /* Ajustez cette valeur pour monter/descendre le badge */
-                left: 50%;            /* Place le début du badge à 50% de la largeur */
-                transform: translateX(-50%); /* Recule le badge de 50% de sa propre taille pour être parfaitement centré */
+                top: 50px;
+                left: 50%;
+                transform: translateX(-50%);
                 font-size: 1.2rem;
                 font-weight: 700;
                 padding: 8px 25px;
                 letter-spacing: 2px;
-                z-index: 99;          /* S'assure qu'il est au-dessus */
-                white-space: nowrap;  /* Empêche le texte de se couper */
+                z-index: 99;
+                white-space: nowrap;
             ">Depuis 1997</span>
 
             <h1 style="margin-top: 50px;">Votre Expert en <br>Chauffage & Sanitaire</h1>
@@ -44,7 +44,7 @@
 
                 <div style="display: flex; flex-direction: column; gap: 15px;">
 
-                    <a href="#devis-wizard" style="text-decoration: none; background: var(--accent-yellow); color: var(--primary-dark); padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; transition: transform 0.3s; box-shadow: 0 4px 10px rgba(255, 196, 0, 0.3);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <a href="index.php?page=reservation#devis-wizard" style="text-decoration: none; background: var(--accent-yellow); color: var(--primary-dark); padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; transition: transform 0.3s; box-shadow: 0 4px 10px rgba(255, 196, 0, 0.3);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                         <div style="background: rgba(255,255,255,0.3); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                             <i class="fas fa-calendar-check" style="font-size: 1.2rem; color: var(--primary-dark);"></i>
                         </div>
@@ -64,7 +64,7 @@
                         </div>
                     </a>
 
-                    <a href="#contact" style="text-decoration: none; background: rgba(255,255,255,0.1); color: white; padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 1px solid rgba(255,255,255,0.2); transition: background 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                    <a href="index.php#contact" style="text-decoration: none; background: rgba(255,255,255,0.1); color: white; padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 1px solid rgba(255,255,255,0.2); transition: background 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
                         <div style="background: rgba(255,255,255,0.1); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                             <i class="fas fa-tools" style="font-size: 1.1rem; color: white;"></i>
                         </div>

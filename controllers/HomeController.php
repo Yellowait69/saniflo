@@ -17,6 +17,9 @@ class HomeController {
         $this->pdo = $pdo;
     }
 
+    // =================================================================
+    // PAGE D'ACCUEIL (Vitrine + Formulaire de contact classique)
+    // =================================================================
     public function index() {
         // Initialisation session
         if (session_status() === PHP_SESSION_NONE) {
@@ -29,18 +32,13 @@ class HomeController {
 
         $message_status = '';
 
-        // 2. Traitement des Formulaires (POST)
+        // Traitement du Formulaire de Contact (POST)
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
-
             // --- VÉRIFICATION DU TOKEN CSRF ---
             if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-
                 $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #ef9a9a;">Erreur de sécurité. Votre session a expiré ou la requête est invalide. Veuillez rafraîchir la page.</div>';
-
             } else {
-                // Le jeton est valide, on traite les données !
-
-                // --- A. FORMULAIRE DE CONTACT (Simple) ---
+                // --- FORMULAIRE DE CONTACT (Simple) ---
                 if (isset($_POST['nom']) && isset($_POST['message']) && !isset($_POST['appointment_date'])) {
                     $nom = htmlspecialchars(strip_tags(trim($_POST['nom'])));
                     $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
@@ -58,8 +56,46 @@ class HomeController {
                         }
                     }
                 }
+            }
+        }
 
-                // --- B. TRAITEMENT DU WIZARD (Prise de Rendez-vous + Google Agenda + Paiement) ---
+        // Récupération des données pour la vue vitrine
+        try {
+            $certifications = Certification::getAll($this->pdo);
+            $teamMembers = Team::getAll($this->pdo);
+            $services = Service::getAll($this->pdo);
+            $projects = Project::getAll($this->pdo);
+        } catch (Exception $e) {
+            $certifications = $teamMembers = $services = $projects = [];
+        }
+
+        require __DIR__ . '/../views/home.php';
+    }
+
+    // =================================================================
+    // PAGE DE RÉSERVATION (Wizard + Google Agenda + Stripe)
+    // =================================================================
+    public function reservation() {
+        // Initialisation session
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        // Génération du token CSRF
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
+        $message_status = '';
+
+        // Traitement du formulaire Wizard (POST)
+        if ($_SERVER["REQUEST_METHOD"] == "POST") {
+
+            // --- VÉRIFICATION DU TOKEN CSRF ---
+            if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+                $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #ef9a9a;">Erreur de sécurité. Votre session a expiré ou la requête est invalide. Veuillez rafraîchir la page.</div>';
+            } else {
+
+                // --- TRAITEMENT DU WIZARD ---
                 if (isset($_POST['appointment_date'])) {
                     try {
                         // Récupération des données
@@ -68,7 +104,7 @@ class HomeController {
                         $zip = (int)($_POST['zip'] ?? 0);
 
                         // --- 1. SÉCURITÉ : On vérifie la dispo via PlanningLogic ---
-                        // AJOUT : On passe $this->pdo à PlanningLogic
+                        // On passe $this->pdo à PlanningLogic pour la limite de 15 minutes
                         $logic = new PlanningLogic($this->pdo);
                         $slotsCheck = $logic->getAvailableSlots($dateRdv, $zip);
 
@@ -115,8 +151,7 @@ class HomeController {
                         ];
                         $serviceLabel = $serviceMap[$service] ?? ucwords(str_replace('_', ' ', $service));
 
-                        // --- 3. INSERTION EN BASE (Statut initial corrigé) ---
-                        // Si Stripe, le statut est 'en_attente'. Il n'apparaitra pas dans le panel admin tant qu'il n'est pas payé.
+                        // --- 3. INSERTION EN BASE ---
                         $initialStatus = ($paymentMethod === 'stripe') ? 'en_attente' : 'nouveau';
                         $initialPaymentStatus = ($paymentMethod === 'stripe') ? 'unpaid' : 'pending_on_site';
 
@@ -154,11 +189,9 @@ class HomeController {
 
                             Stripe::setApiKey('sk_test_51SzZKnCHl8KtnRhXbncHLuJeJt8Oye1xLhdhxudVZCtcmOEu3YbkFX09WpIv60Iik4qpKcVghYyOU0Nd1zvqWfee00aruMK55x');
 
-                            // --- CORRECTION DES URLs STRIPE ---
                             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
                             $host = $_SERVER['HTTP_HOST'];
 
-                            // On force l'URL publique et l'URL racine absolue
                             $publicUrl = $protocol . "://" . $host . "/public";
                             $rootUrl = $protocol . "://" . $host;
 
@@ -171,16 +204,15 @@ class HomeController {
                                             'name' => 'Intervention: ' . $serviceLabel,
                                             'description' => 'Date: ' . $dateRdv . ' à ' . $heureRdv . ' (TVA incluse : ' . ($tauxTVA * 100) . '%)',
                                         ],
-                                        // On envoie le prix TTC converti en centimes pour Stripe
                                         'unit_amount' => (int)round($priceTTC * 100),
                                     ],
                                     'quantity' => 1,
                                 ]],
                                 'mode' => 'payment',
-                                // En cas de succès -> direction le dossier /public/
+                                // En cas de succès
                                 'success_url' => $publicUrl . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
-                                // En cas d'annulation -> direction la racine ABSOLUE
-                                'cancel_url' => $rootUrl . '/index.php?msg=cancel',
+                                // En cas d'annulation -> on renvoie sur la page de réservation
+                                'cancel_url' => $rootUrl . '/index.php?page=reservation&msg=cancel',
                             ]);
 
                             $updateStmt = $this->pdo->prepare("UPDATE quote_requests SET stripe_session_id = ? WHERE id = ?");
@@ -217,20 +249,18 @@ class HomeController {
                         $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #ef9a9a;">Erreur : ' . $e->getMessage() . '</div>';
                     }
                 }
-            } // <-- FIN DE LA VÉRIFICATION CSRF
+            }
         }
 
-        // 3. Récupération des données pour la vue
+        // --- RÉCUPÉRATION DES CERTIFICATIONS POUR LA PAGE DE RÉSERVATION ---
         try {
             $certifications = Certification::getAll($this->pdo);
-            $teamMembers = Team::getAll($this->pdo);
-            $services = Service::getAll($this->pdo);
-            $projects = Project::getAll($this->pdo);
         } catch (Exception $e) {
-            $certifications = $teamMembers = $services = $projects = [];
+            $certifications = [];
         }
 
-        require __DIR__ . '/../views/home.php';
+        // On charge la nouvelle vue dédiée au lieu de home.php
+        require __DIR__ . '/../views/reservation.php';
     }
 }
 ?>

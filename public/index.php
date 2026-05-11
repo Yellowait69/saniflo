@@ -1,33 +1,57 @@
 <?php
 // public/index.php
 
-// 1. Démarrage de la session
-// Indispensable pour la gestion des jetons CSRF et l'affichage des messages de succès/erreur
+/**
+ * 1. DÉMARRAGE DE LA SESSION
+ * Indispensable pour la gestion des jetons CSRF (sécurité des formulaires)
+ * et pour l'affichage des messages flash (succès/erreur).
+ */
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 2. Chargement des dépendances via Composer
-// Stripe et Google API en dépendent.
+/**
+ * 2. CHARGEMENT DES DÉPENDANCES (COMPOSER)
+ * Nécessaire pour les bibliothèques Stripe et Google Calendar API.
+ */
 if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
     require_once __DIR__ . '/../vendor/autoload.php';
 }
 
-// 3. Chargement des modèles et services
-// On inclut les fichiers nécessaires au fonctionnement du site
+/**
+ * 3. CHARGEMENT DES MODÈLES, SERVICES ET CONTRÔLEUR
+ */
 require_once __DIR__ . '/../models/Certification.php';
 require_once __DIR__ . '/../models/Team.php';
 require_once __DIR__ . '/../models/Service.php';
 require_once __DIR__ . '/../models/Project.php';
-require_once __DIR__ . '/../services/PlanningLogic.php'; // Inclus ici pour être disponible partout
+require_once __DIR__ . '/../services/PlanningLogic.php';
 require_once __DIR__ . '/../controllers/HomeController.php';
 
-// 4. Connexion à la base de données
-// Ce fichier doit retourner l'instance PDO ($pdo)
+/**
+ * 4. CONNEXION À LA BASE DE DONNÉES
+ * Le fichier db.php doit retourner une instance PDO ($pdo).
+ */
 $pdo = require_once __DIR__ . '/../config/db.php';
 
-// 5. Routage et exécution
-// On injecte l'instance PDO dans le contrôleur.
-// Le contrôleur l'utilisera ensuite pour PlanningLogic afin de gérer les blocages de 15 min.
+/**
+ * 5. ROUTAGE SIMPLE
+ * On analyse l'URL pour savoir quelle page afficher.
+ */
 $controller = new HomeController($pdo);
-$controller->index();
+
+// On récupère le paramètre "page" dans l'URL (ex: index.php?page=reservation)
+$page = $_GET['page'] ?? 'home';
+
+switch ($page) {
+    case 'reservation':
+        // Affiche la nouvelle page de prise de rendez-vous dédiée
+        $controller->reservation();
+        break;
+
+    case 'home':
+    default:
+        // Affiche la page d'accueil (Landing Page vitrine)
+        $controller->index();
+        break;
+}

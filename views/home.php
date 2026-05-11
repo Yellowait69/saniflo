@@ -8,8 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -24,21 +22,16 @@ include __DIR__ . '/partials/about.php';
 // 3. Services
 include __DIR__ . '/partials/services.php';
 
-// AJOUT : 3b. Portfolio / Réalisations
+// 4. Portfolio / Réalisations
 include __DIR__ . '/partials/portfolio.php';
 
-// 4. Module de Prise de Rendez-vous (Wizard)
-// Ce fichier doit être créé dans views/partials/quote_wizard.php
-include __DIR__ . '/partials/quote_wizard.php';
-
-// 5. Contact & Footer
-include __DIR__ . '/partials/contact.php';
+// 5. Avis clients
 include __DIR__ . '/partials/reviews.php';
+
+// 6. Formulaire de contact basique & Footer
+include __DIR__ . '/partials/contact.php';
 include __DIR__ . '/partials/footer.php';
 ?>
-
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
 
 <script src="js/scripts.js"></script>
 

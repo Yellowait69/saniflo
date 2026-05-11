@@ -19,7 +19,7 @@
                 <div class="step-indicator" data-step="3" data-title="Date">4</div>
             </div>
 
-            <form id="wizardForm" action="index.php#devis-wizard" method="POST">
+            <form id="wizardForm" action="index.php?page=reservation" method="POST">
 
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
 

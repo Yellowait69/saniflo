@@ -11,13 +11,13 @@
                 <h4>Navigation</h4>
                 <ul>
                     <li><a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank">Demande de Devis</a></li>
-                    <li><a href="#accueil">Accueil</a></li>
-                    <li><a href="#apropos">À Propos</a></li>
-                    <li><a href="#services">Services</a></li>
-                    <li><a href="#realisations">Réalisations</a></li>
-                    <li><a href="#devis-wizard">Prendre Rendez-vous</a></li>
-                    <li><a href="#contact">Contact</a></li>
-                    <li><a href="#nb-avis-top">Avis Clients</a></li>
+                    <li><a href="index.php#accueil">Accueil</a></li>
+                    <li><a href="index.php#apropos">À Propos</a></li>
+                    <li><a href="index.php#services">Services</a></li>
+                    <li><a href="index.php#realisations">Réalisations</a></li>
+                    <li><a href="index.php?page=reservation#devis-wizard">Prendre Rendez-vous</a></li>
+                    <li><a href="index.php#contact">Contact</a></li>
+                    <li><a href="index.php#nb-avis-top">Avis Clients</a></li>
                 </ul>
             </div>
 
@@ -62,13 +62,13 @@
                 Le responsable du traitement des données est Saniflo SRL, situé Rue de Fontenelle 15, 1325 Dion-Valmont (BE 0461.290.428).</p>
 
             <p><strong>2. Données collectées</strong><br>
-                Via notre formulaire de contact, nous collectons : Nom, Email, Téléphone et votre message. Ces données sont strictement nécessaires pour répondre à votre demande.</p>
+                Via nos formulaires, nous collectons : Nom, Email, Téléphone et détails de l'intervention. Ces données sont strictement nécessaires pour répondre à votre demande et organiser les rendez-vous.</p>
 
             <p><strong>3. Utilisation des données</strong><br>
-                Vos données sont utilisées uniquement pour : répondre à vos questions, la prise de rendez-vous et la facturation. Elles ne sont <strong>jamais vendues</strong> à des tiers.</p>
+                Vos données sont utilisées uniquement pour : répondre à vos questions, la planification technique, la gestion des paiements et la facturation. Elles ne sont <strong>jamais vendues</strong> à des tiers.</p>
 
             <p><strong>4. Conservation</strong><br>
-                Les données de contact sans suite sont conservées 3 ans maximum. Les données de facturation sont conservées selon les obligations légales (7 à 10 ans).</p>
+                Les données de contact sans suite sont conservées 3 ans maximum. Les données relatives aux interventions et à la facturation sont conservées selon les obligations légales (7 à 10 ans).</p>
 
             <p><strong>5. Vos droits</strong><br>
                 Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Contactez-nous à info@saniflo.be pour exercer ce droit.</p>
