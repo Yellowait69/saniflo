@@ -15,7 +15,7 @@ use Stripe\Checkout\Session;
 // CONFIGURATION STRIPE
 // Remplacez la chaîne ci-dessous par votre CLÉ SECRÈTE (Secret Key)
 // ==============================================================================
-Stripe::setApiKey('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');
+Stripe::setApiKey('sk_test_51SzZKnCHl8KtnRhXbncHLuJeJt8Oye1xLhdhxudVZCtcmOEu3YbkFX09WpIv60Iik4qpKcVghYyOU0Nd1zvqWfee00aruMK55x');
 
 $session_id = $_GET['session_id'] ?? null;
 

@@ -140,7 +140,7 @@ class HomeController {
                         // === CAS 1 : PAIEMENT EN LIGNE ===
 
                         // ! REMPLACEZ PAR VOTRE CLÉ SECRÈTE STRIPE (sk_test_...) !
-                        Stripe::setApiKey('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');
+                        Stripe::setApiKey('sk_test_51SzZKnCHl8KtnRhXbncHLuJeJt8Oye1xLhdhxudVZCtcmOEu3YbkFX09WpIv60Iik4qpKcVghYyOU0Nd1zvqWfee00aruMK55x');
 
                         // Construction URL absolue
                         $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
