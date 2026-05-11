@@ -71,6 +71,13 @@ $msg = '';
 
 // --- TRAITEMENT POST (Ajout / Modif / Suppression) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    // === VÉRIFICATION CSRF GLOBALE POUR CE FICHIER ===
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['admin_csrf_token'], $_POST['csrf_token'])) {
+        die("Erreur de sécurité CSRF : L'action a été bloquée.");
+    }
+    // =================================================
+
     if (isset($_POST['delete_id'])) {
         // SUPPRESSION
         $stmt = $pdo->prepare("DELETE FROM $currentTable WHERE id = ?");
@@ -240,6 +247,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </h3>
 
             <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['admin_csrf_token'] ?>">
+
                 <?php foreach ($config['fields'] as $key => $fieldConfig): ?>
                     <div class="form-group">
                         <label><?= htmlspecialchars($fieldConfig['label']) ?></label>
@@ -325,6 +334,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <i class="fas fa-edit"></i>
                             </a>
                             <form method="POST" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet élément ?');">
+                                <input type="hidden" name="csrf_token" value="<?= $_SESSION['admin_csrf_token'] ?>">
                                 <input type="hidden" name="delete_id" value="<?= $row['id'] ?>">
                                 <button type="submit" class="btn-action btn-delete" title="Supprimer" style="cursor:pointer;">
                                     <i class="fas fa-trash"></i>

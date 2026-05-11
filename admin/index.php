@@ -7,9 +7,22 @@ if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true
     exit;
 }
 
+// === NOUVEAU : GÉNÉRATION DU TOKEN CSRF DE LOGIN ===
+if (empty($_SESSION['login_csrf_token'])) {
+    $_SESSION['login_csrf_token'] = bin2hex(random_bytes(32));
+}
+// ===================================================
+
 $error = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+
+    // === VÉRIFICATION DU TOKEN CSRF DE LOGIN ===
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['login_csrf_token'], $_POST['csrf_token'])) {
+        die("Erreur de sécurité CSRF : Tentative de connexion bloquée.");
+    }
+    // ===========================================
+
     // Connexion DB
     $pdo = require_once __DIR__ . '/../config/db.php';
 
@@ -27,6 +40,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         $_SESSION['admin_logged_in'] = true;
         $_SESSION['admin_user'] = $user['username'];
+
+        // === NOUVEAU : GÉNÉRATION DU TOKEN CSRF ADMIN DÈS LA CONNEXION ===
+        // On s'assure que le panel a un jeton tout neuf dès l'entrée
+        $_SESSION['admin_csrf_token'] = bin2hex(random_bytes(32));
+
+        // Nettoyage du token de login devenu inutile
+        unset($_SESSION['login_csrf_token']);
+        // =================================================================
 
         header("Location: dashboard.php");
         exit;
@@ -59,6 +80,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <?php endif; ?>
 
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['login_csrf_token'] ?>">
+
             <div style="position:relative;">
                 <input type="text" name="username" placeholder="Utilisateur" required autofocus value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
             </div>

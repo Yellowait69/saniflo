@@ -57,7 +57,7 @@ $lastRdvs = $pdo->query("SELECT * FROM quote_requests ORDER BY created_at DESC L
                 <th>Date demande</th>
                 <th>Client</th>
                 <th>Paiement</th>
-                <th>Lundi demandé</th>
+                <th>Rendez-vous demandé</th>
                 <th>Statut</th>
                 <th style="text-align: right;">Action</th>
             </tr>

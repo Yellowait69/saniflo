@@ -32,7 +32,7 @@ class HomeController {
         // 2. Traitement des Formulaires (POST)
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-            // --- NOUVEAU : VÉRIFICATION DU TOKEN CSRF ---
+            // --- VÉRIFICATION DU TOKEN CSRF ---
             if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
 
                 $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #ef9a9a;">Erreur de sécurité. Votre session a expiré ou la requête est invalide. Veuillez rafraîchir la page.</div>';
@@ -94,10 +94,17 @@ class HomeController {
                         $service = $_POST['service_type'] ?? 'Intervention';
                         $descUser = $_POST['description'] ?? '';
 
-                        // MISE A JOUR : Valeur par défaut 'stripe' car 'direct' n'existe plus
                         $paymentMethod = $_POST['payment_method'] ?? 'stripe';
 
-                        $priceHtva = $_POST['total_price_htva'] ?? 0;
+                        // --- CALCUL DE LA TVA ---
+                        $priceHtva = (float)($_POST['total_price_htva'] ?? 0);
+                        $housingYear = !empty($_POST['housing_year']) ? (int)$_POST['housing_year'] : date('Y');
+
+                        // Si le bâtiment a 10 ans ou plus -> 6%, sinon -> 21%
+                        $ageBatiment = date('Y') - $housingYear;
+                        $tauxTVA = ($ageBatiment >= 10) ? 0.06 : 0.21;
+
+                        $priceTTC = $priceHtva * (1 + $tauxTVA); // Prix final à envoyer à Stripe
 
                         // Transformation du nom du service
                         $serviceMap = [
@@ -107,7 +114,11 @@ class HomeController {
                         ];
                         $serviceLabel = $serviceMap[$service] ?? ucwords(str_replace('_', ' ', $service));
 
-                        // --- 3. INSERTION EN BASE (Statut initial) ---
+                        // --- 3. INSERTION EN BASE (Statut initial corrigé) ---
+                        // Si Stripe, le statut est 'en_attente'. Il n'apparaitra pas dans le panel admin tant qu'il n'est pas payé.
+                        $initialStatus = ($paymentMethod === 'stripe') ? 'en_attente' : 'nouveau';
+                        $initialPaymentStatus = ($paymentMethod === 'stripe') ? 'unpaid' : 'pending_on_site';
+
                         $sql = "INSERT INTO quote_requests (
                             is_company, company_name, vat_number, vat_regime, housing_year,
                             firstname, lastname, email, phone, 
@@ -121,10 +132,8 @@ class HomeController {
                             ?, ?, ?, ?, 
                             ?, ?, ?, ?, ?, ?, ?, ?, 
                             ?, ?, ?, ?, 
-                            ?, ?, ?, ?, 'nouveau', ?
+                            ?, ?, ?, ?, ?, ?
                         )";
-
-                        $initialPaymentStatus = ($paymentMethod === 'stripe') ? 'unpaid' : 'pending_on_site';
 
                         $stmt = $this->pdo->prepare($sql);
                         $stmt->execute([
@@ -133,7 +142,7 @@ class HomeController {
                             $rue, $_POST['billing_box'] ?? null, $cp, $ville,
                             $worksite_same, $_POST['worksite_name'] ?? null, $_POST['worksite_street'] ?? null, $_POST['worksite_box'] ?? null, $_POST['worksite_zip'] ?? null, $_POST['worksite_city'] ?? null, $_POST['worksite_phone'] ?? null, $_POST['worksite_email'] ?? null,
                             $_POST['device_model'] ?? null, $_POST['device_serial'] ?? null, !empty($_POST['device_year']) ? $_POST['device_year'] : null, $_POST['device_kw'] ?? null,
-                            $full_datetime, $paymentMethod, $priceHtva, $descUser, $initialPaymentStatus
+                            $full_datetime, $paymentMethod, $priceHtva, $descUser, $initialStatus, $initialPaymentStatus
                         ]);
 
                         $lastInsertId = $this->pdo->lastInsertId();
@@ -144,10 +153,13 @@ class HomeController {
 
                             Stripe::setApiKey('sk_test_51SzZKnCHl8KtnRhXbncHLuJeJt8Oye1xLhdhxudVZCtcmOEu3YbkFX09WpIv60Iik4qpKcVghYyOU0Nd1zvqWfee00aruMK55x');
 
+                            // --- CORRECTION DES URLs STRIPE ---
                             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
                             $host = $_SERVER['HTTP_HOST'];
-                            $scriptDir = dirname($_SERVER['PHP_SELF']);
-                            $baseUrl = $protocol . "://" . $host . $scriptDir;
+
+                            // On force l'URL publique et l'URL racine absolue
+                            $publicUrl = $protocol . "://" . $host . "/public";
+                            $rootUrl = $protocol . "://" . $host;
 
                             $checkout_session = Session::create([
                                 'payment_method_types' => ['card'],
@@ -156,15 +168,18 @@ class HomeController {
                                         'currency' => 'eur',
                                         'product_data' => [
                                             'name' => 'Intervention: ' . $serviceLabel,
-                                            'description' => 'Date: ' . $dateRdv . ' à ' . $heureRdv,
+                                            'description' => 'Date: ' . $dateRdv . ' à ' . $heureRdv . ' (TVA incluse : ' . ($tauxTVA * 100) . '%)',
                                         ],
-                                        'unit_amount' => $priceHtva * 100,
+                                        // On envoie le prix TTC converti en centimes pour Stripe
+                                        'unit_amount' => (int)round($priceTTC * 100),
                                     ],
                                     'quantity' => 1,
                                 ]],
                                 'mode' => 'payment',
-                                'success_url' => $baseUrl . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
-                                'cancel_url' => $baseUrl . '/index.php?msg=cancel',
+                                // En cas de succès -> direction le dossier /public/
+                                'success_url' => $publicUrl . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
+                                // En cas d'annulation -> direction la racine ABSOLUE
+                                'cancel_url' => $rootUrl . '/index.php?msg=cancel',
                             ]);
 
                             $updateStmt = $this->pdo->prepare("UPDATE quote_requests SET stripe_session_id = ? WHERE id = ?");

@@ -13,9 +13,13 @@ use Stripe\Checkout\Session;
 
 // ==============================================================================
 // CONFIGURATION STRIPE
-// Remplacez la chaîne ci-dessous par votre CLÉ SECRÈTE (Secret Key)
 // ==============================================================================
 Stripe::setApiKey('sk_test_51SzZKnCHl8KtnRhXbncHLuJeJt8Oye1xLhdhxudVZCtcmOEu3YbkFX09WpIv60Iik4qpKcVghYyOU0Nd1zvqWfee00aruMK55x');
+
+// Construction de l'URL de base dynamique pour les redirections
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+$host = $_SERVER['HTTP_HOST'];
+$publicUrl = $protocol . "://" . $host . "/public";
 
 $session_id = $_GET['session_id'] ?? null;
 
@@ -31,12 +35,12 @@ if ($session_id) {
             $stmt->execute([$session_id]);
             $rdv = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // On vérifie que le RDV existe et qu'il n'a pas déjà été traité (statut 'unpaid')
+            // On vérifie que le RDV existe et qu'il est encore en attente de paiement
             if ($rdv && $rdv['payment_status'] === 'unpaid') {
 
                 // --- A. Mise à jour du statut en base de données ---
-                // On passe le paiement à 'paid' et le statut global à 'confirme' (optionnel)
-                $updateSql = "UPDATE quote_requests SET payment_status = 'paid', status = 'confirme' WHERE id = ?";
+                // CRITIQUE : On passe le statut à 'nouveau' pour qu'il soit visible dans l'admin
+                $updateSql = "UPDATE quote_requests SET payment_status = 'paid', status = 'nouveau' WHERE id = ?";
                 $pdo->prepare($updateSql)->execute([$rdv['id']]);
 
                 // --- B. Ajout à Google Agenda ---
@@ -77,17 +81,19 @@ if ($session_id) {
                     'time'        => $timeOnly
                 ]);
 
-                // --- C. Redirection vers l'accueil avec message de succès ---
-                header("Location: index.php?msg=payment_success");
+                // --- C. Redirection vers l'accueil (Chemin dynamique absolu vers /public/) ---
+                header("Location: " . $publicUrl . "/index.php?msg=payment_success");
                 exit;
             }
         }
     } catch (Exception $e) {
-        // En cas d'erreur technique, on arrête le script et on affiche l'erreur
-        die("Erreur lors de la validation du paiement : " . $e->getMessage());
+        // En cas d'erreur technique, on enregistre l'erreur et on redirige
+        error_log("Erreur validation Stripe : " . $e->getMessage());
+        header("Location: " . $publicUrl . "/index.php?msg=error");
+        exit;
     }
 }
 
-// Si pas de session_id ou paiement non validé, redirection simple vers l'accueil
-header("Location: index.php");
+// Redirection par défaut
+header("Location: " . $publicUrl . "/index.php");
 exit;

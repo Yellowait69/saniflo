@@ -9,6 +9,13 @@ $msg = '';
 
 // --- UPDATE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    // === VÉRIFICATION CSRF GLOBALE POUR CE FICHIER ===
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['admin_csrf_token'], $_POST['csrf_token'])) {
+        die("Erreur de sécurité CSRF : L'action a été bloquée.");
+    }
+    // =================================================
+
     $sql = "UPDATE quote_requests SET 
         firstname=?, lastname=?, email=?, phone=?,
         billing_street=?, billing_city=?, zip=?,
@@ -67,6 +74,7 @@ if (!empty($quote['appointment_date'])) {
     <?php if($msg): ?><div style="background:#d4edda; color:#155724; padding:15px; border-radius:5px; margin-bottom:20px;"><?= $msg ?></div><?php endif; ?>
 
     <form method="POST" class="crud-form">
+        <input type="hidden" name="csrf_token" value="<?= $_SESSION['admin_csrf_token'] ?>">
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px;">
 

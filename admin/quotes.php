@@ -4,6 +4,11 @@ $pdo = require_once __DIR__ . '/../config/db.php';
 
 // ACTION : Supprimer
 if (isset($_POST['delete_id']) && is_numeric($_POST['delete_id'])) {
+    // VÉRIFICATION CSRF
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['admin_csrf_token'], $_POST['csrf_token'])) {
+        die("Erreur de sécurité CSRF : L'action a été bloquée.");
+    }
+
     $stmt = $pdo->prepare("DELETE FROM quote_requests WHERE id = ?");
     $stmt->execute([$_POST['delete_id']]);
     header("Location: quotes.php?msg=deleted"); exit;
@@ -11,6 +16,11 @@ if (isset($_POST['delete_id']) && is_numeric($_POST['delete_id'])) {
 
 // ACTION : Traiter (Archiver)
 if (isset($_GET['archive']) && is_numeric($_GET['archive'])) {
+    // VÉRIFICATION CSRF
+    if (!isset($_GET['csrf_token']) || !hash_equals($_SESSION['admin_csrf_token'], $_GET['csrf_token'])) {
+        die("Erreur de sécurité CSRF : L'action a été bloquée.");
+    }
+
     $stmt = $pdo->prepare("UPDATE quote_requests SET status = 'traité' WHERE id = ?");
     $stmt->execute([$_GET['archive']]);
     header("Location: quotes.php"); exit;
@@ -83,6 +93,7 @@ $quotes = $pdo->query($sql)->fetchAll();
                         </a>
 
                         <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer définitivement ce dossier ?');">
+                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['admin_csrf_token'] ?>">
                             <input type="hidden" name="delete_id" value="<?= $q['id'] ?>">
                             <button type="submit" class="btn-action btn-delete" title="Supprimer" style="cursor:pointer;">
                                 <i class="fas fa-trash"></i>
@@ -90,7 +101,7 @@ $quotes = $pdo->query($sql)->fetchAll();
                         </form>
 
                         <?php if(($q['status'] ?? '') == 'nouveau'): ?>
-                            <a href="?archive=<?= $q['id'] ?>" class="btn-action" title="Marquer comme traité"
+                            <a href="?archive=<?= $q['id'] ?>&csrf_token=<?= $_SESSION['admin_csrf_token'] ?>" class="btn-action" title="Marquer comme traité"
                                style="background-color: var(--success); color: white;"
                                onclick="return confirm('Confirmer le traitement de ce dossier ?');">
                                 <i class="fas fa-check"></i>

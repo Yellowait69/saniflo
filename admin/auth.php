@@ -13,6 +13,13 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
+// === NOUVEAU : GÉNÉRATION DU TOKEN CSRF ADMIN ===
+// Crée un jeton unique et cryptographiquement sûr s'il n'existe pas encore pour cette session
+if (empty($_SESSION['admin_csrf_token'])) {
+    $_SESSION['admin_csrf_token'] = bin2hex(random_bytes(32));
+}
+// ================================================
+
 // 3. Sécurité : Déconnexion automatique après inactivité (30 minutes)
 $timeout_duration = 1800; // 30 minutes en secondes
 

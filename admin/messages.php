@@ -4,12 +4,20 @@ $pdo = require_once __DIR__ . '/../config/db.php';
 
 // ACTION : Marquer comme lu
 if (isset($_GET['read']) && is_numeric($_GET['read'])) {
+    // VÉRIFICATION CSRF
+    if (!isset($_GET['csrf_token']) || !hash_equals($_SESSION['admin_csrf_token'], $_GET['csrf_token'])) {
+        die("Erreur de sécurité CSRF : L'action a été bloquée.");
+    }
     $pdo->prepare("UPDATE messages SET is_read = 1 WHERE id = ?")->execute([$_GET['read']]);
     header("Location: messages.php"); exit;
 }
 
 // ACTION : Supprimer (Nouveau)
 if (isset($_POST['delete_id']) && is_numeric($_POST['delete_id'])) {
+    // VÉRIFICATION CSRF
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['admin_csrf_token'], $_POST['csrf_token'])) {
+        die("Erreur de sécurité CSRF : L'action a été bloquée.");
+    }
     $stmt = $pdo->prepare("DELETE FROM messages WHERE id = ?");
     $stmt->execute([$_POST['delete_id']]);
     header("Location: messages.php?msg=deleted"); exit;
@@ -74,7 +82,7 @@ $msgs = $pdo->query("SELECT * FROM messages ORDER BY date_envoi DESC")->fetchAll
                         </a>
 
                         <?php if($isUnread): ?>
-                            <a href="?read=<?= $m['id'] ?>" class="btn-action" title="Marquer comme lu" style="background-color: var(--info); color: white;">
+                            <a href="?read=<?= $m['id'] ?>&csrf_token=<?= $_SESSION['admin_csrf_token'] ?>" class="btn-action" title="Marquer comme lu" style="background-color: var(--info); color: white;">
                                 <i class="fas fa-check"></i>
                             </a>
                         <?php else: ?>
@@ -84,6 +92,7 @@ $msgs = $pdo->query("SELECT * FROM messages ORDER BY date_envoi DESC")->fetchAll
                         <?php endif; ?>
 
                         <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer ce message ?');">
+                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['admin_csrf_token'] ?>">
                             <input type="hidden" name="delete_id" value="<?= $m['id'] ?>">
                             <button type="submit" class="btn-action btn-delete" title="Supprimer" style="cursor:pointer;">
                                 <i class="fas fa-trash"></i>
