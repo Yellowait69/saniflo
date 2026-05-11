@@ -68,7 +68,8 @@ class HomeController {
                         $zip = (int)($_POST['zip'] ?? 0);
 
                         // --- 1. SÉCURITÉ : On vérifie la dispo via PlanningLogic ---
-                        $logic = new PlanningLogic();
+                        // AJOUT : On passe $this->pdo à PlanningLogic
+                        $logic = new PlanningLogic($this->pdo);
                         $slotsCheck = $logic->getAvailableSlots($dateRdv, $zip);
 
                         if (isset($slotsCheck['error'])) {

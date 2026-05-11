@@ -2,6 +2,9 @@
 // public/api_slots.php
 header('Content-Type: application/json');
 
+// AJOUT : Connexion à la base de données pour vérifier les créneaux en cours de paiement
+$pdo = require_once __DIR__ . '/../config/db.php';
+
 // On inclut la logique métier
 require_once __DIR__ . '/../services/PlanningLogic.php';
 
@@ -16,8 +19,8 @@ if (!$zip) {
 }
 
 try {
-    // On instancie le cerveau du calendrier
-    $logic = new PlanningLogic();
+    // MODIFICATION : On instancie le cerveau du calendrier avec $pdo
+    $logic = new PlanningLogic($pdo);
 
     if ($date) {
         // Cas 1 : Une date précise est demandée (Vérification d'un jour spécifique)

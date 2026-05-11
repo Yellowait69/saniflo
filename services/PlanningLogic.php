@@ -5,13 +5,16 @@ require_once __DIR__ . '/../vendor/autoload.php';
 class PlanningLogic {
     private $service;
     private $calendarId;
+    private $pdo; // Ajout de la variable pour la base de données
 
-    public function __construct() {
+    // Ajout du paramètre $pdo (optionnel pour ne pas casser l'existant s'il est oublié quelque part)
+    public function __construct($pdo = null) {
         $client = new Google_Client();
         $client->setAuthConfig(__DIR__ . '/../config/service-account.json');
         $client->addScope(Google_Service_Calendar::CALENDAR);
         $this->service = new Google_Service_Calendar($client);
         $this->calendarId = 'fbkhu75pphmgu9njp7gj43ftjk@group.calendar.google.com';
+        $this->pdo = $pdo;
     }
 
     public function getNextAvailabilities($zip, $weeks = 12) {
@@ -39,6 +42,30 @@ class PlanningLogic {
             $eventsByDay[$dayKey][] = $event;
         }
 
+        // --- NOUVEAU : RÉCUPÉRATION DES CRÉNEAUX BLOQUÉS EN BASE DE DONNÉES ---
+        $dbOccupied = [];
+        if ($this->pdo) {
+            // On bloque les RDV validés, ET les RDV en attente de paiement depuis moins de 15 min
+            $sql = "SELECT appointment_date 
+                    FROM quote_requests 
+                    WHERE appointment_date IS NOT NULL 
+                    AND status != 'annulé'
+                    AND (
+                        status IN ('nouveau', 'traité') 
+                        OR (status = 'en_attente' AND created_at >= NOW() - INTERVAL 15 MINUTE)
+                    )";
+            $stmt = $this->pdo->query($sql);
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $dt = new DateTime($row['appointment_date'], new DateTimeZone('Europe/Brussels'));
+                $startTs = $dt->getTimestamp();
+                $dbOccupied[] = [
+                    'start' => $startTs,
+                    'end'   => $startTs + (45 * 60) // Un créneau dure 45 min
+                ];
+            }
+        }
+        // ----------------------------------------------------------------------
+
         $results = [];
         $currentDate = new DateTime();
 
@@ -52,7 +79,8 @@ class PlanningLogic {
             $dateString = $currentDate->format('Y-m-d');
             $dayEvents = $eventsByDay[$dateString] ?? [];
 
-            $slots = $this->calculateSlotsForDay($dateString, $dayEvents, $zoneType);
+            // On passe $dbOccupied à la fonction
+            $slots = $this->calculateSlotsForDay($dateString, $dayEvents, $zoneType, $dbOccupied);
 
             if (!empty($slots)) {
                 $formatter = new IntlDateFormatter('fr_FR', IntlDateFormatter::FULL, IntlDateFormatter::NONE);
@@ -72,7 +100,8 @@ class PlanningLogic {
         return ['days' => $results];
     }
 
-    private function calculateSlotsForDay($date, $events, $zoneType) {
+    // Ajout du paramètre $dbOccupied = []
+    private function calculateSlotsForDay($date, $events, $zoneType, $dbOccupied = []) {
         $totalAppointments = 0;
         $occupied = [];
         $isBrusselsDay = false;
@@ -82,6 +111,7 @@ class PlanningLogic {
         $todayTimestamp = $now->getTimestamp();
         $isToday = ($date === $now->format('Y-m-d'));
 
+        // 1. Ajout des événements Google Agenda
         foreach ($events as $event) {
             $summary = trim(strtoupper((string)$event->getSummary()));
             $location = trim(strtoupper((string)$event->getLocation()));
@@ -118,6 +148,19 @@ class PlanningLogic {
                 }
             }
         }
+
+        // 2. --- NOUVEAU : Ajout des créneaux réservés temporairement (15 min) ---
+        foreach ($dbOccupied as $dbOcc) {
+            if (date('Y-m-d', $dbOcc['start']) === $date) {
+                $occupied[] = [
+                    'start' => $dbOcc['start'],
+                    'end'   => $dbOcc['end'],
+                    'end_str' => date('H:i', $dbOcc['end'])
+                ];
+                $totalAppointments++; // On compte ces créneaux dans la limite des 6 / jour
+            }
+        }
+        // ------------------------------------------------------------------------
 
         if ($totalAppointments >= 6) return [];
 
@@ -208,7 +251,6 @@ class PlanningLogic {
 
         // Tri final des créneaux
         sort($validSlots);
-
 
         // SPÉCIFICITÉ BXL CENTRE : CONSÉCUTIF OBLIGATOIRE
         if ($zoneType === 'BXL_STD') {

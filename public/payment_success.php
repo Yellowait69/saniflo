@@ -44,7 +44,8 @@ if ($session_id) {
                 $pdo->prepare($updateSql)->execute([$rdv['id']]);
 
                 // --- B. Ajout à Google Agenda ---
-                $logic = new PlanningLogic();
+                // MODIFICATION : On injecte $pdo pour la logique de planification
+                $logic = new PlanningLogic($pdo);
 
                 // Reconstruction des informations pour l'événement
                 $nom = $rdv['lastname'];
@@ -97,3 +98,4 @@ if ($session_id) {
 // Redirection par défaut
 header("Location: " . $publicUrl . "/index.php");
 exit;
+?>
