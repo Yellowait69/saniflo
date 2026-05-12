@@ -28,7 +28,7 @@
             </div>
 
         <?php elseif (!empty($peutModifier) && $peutModifier): ?>
-            <h2>Gérer votre intervention</h2>
+            <h2 id="gerer-intervention" style="scroll-margin-top: 350px;">Gérer votre intervention</h2>
             <p>Votre rendez-vous actuel est prévu le <strong><?= date('d/m/Y', strtotime($rdv['appointment_date'])) ?></strong> à <strong><?= date('H:i', strtotime($rdv['appointment_date'])) ?></strong>.</p>
 
             <div style="display: flex; gap: 20px; margin-top: 30px; justify-content: center; flex-wrap: wrap;">

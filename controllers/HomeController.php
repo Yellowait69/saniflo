@@ -259,6 +259,13 @@ class HomeController {
             }
         }
 
+        // --- CORRECTION : Chargement des agréments pour le header/footer ---
+        try {
+            $certifications = Certification::getAll($this->pdo);
+        } catch (Exception $e) {
+            $certifications = [];
+        }
+
         require __DIR__ . '/../views/modifier_rdv.php';
     }
 
@@ -450,7 +457,8 @@ class HomeController {
     private function sendReservationEmail($to, $prenom, $nom, $service, $date, $heure, $token) {
         $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
         $host = $_SERVER['HTTP_HOST'];
-        $link = $protocol . "://" . $host . "/index.php?page=modifier_rdv&token=" . $token;
+        // --- CORRECTION : Ajout de l'ancre #gerer-intervention au lien ---
+        $link = $protocol . "://" . $host . "/index.php?page=modifier_rdv&token=" . $token . "#gerer-intervention";
         $logoUrl = $protocol . "://" . $host . "/img/logo-saniflo.png";
 
         $dateFr = date('d/m/Y', strtotime($date));
