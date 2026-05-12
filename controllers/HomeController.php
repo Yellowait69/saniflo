@@ -153,7 +153,7 @@ class HomeController {
     }
 
     // =================================================================
-    // LOGIQUE DE MODIFICATION DE RENDEZ-VOUS (NOUVEAU)
+    // LOGIQUE DE MODIFICATION DE RENDEZ-VOUS (NOUVEAU - GESTION AGENDA)
     // =================================================================
     public function modifier_rdv() {
         if (session_status() === PHP_SESSION_NONE) { session_start(); }
@@ -174,6 +174,9 @@ class HomeController {
             die("Lien invalide ou expiré.");
         }
 
+        // Raccourci pour simplifier l'utilisation du code postal dans la vue
+        $rdv['zip'] = $rdv['billing_zip'] ?? '';
+
         // 2. Vérification de la règle des 7 jours
         $dateRdv = new DateTime($rdv['appointment_date']);
         $maintenant = new DateTime();
@@ -182,9 +185,78 @@ class HomeController {
 
         $peutModifier = ($joursRestants >= 7);
 
-        // 3. Traitement de la demande de modification
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $peutModifier) {
-            $message_status = '<div class="alert success" style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px; margin-top:20px; border:1px solid #c8e6c9;">Votre demande de modification a bien été transmise. Nous vous recontacterons très vite pour fixer une nouvelle date.</div>';
+        // 3. Traitement de la demande de modification (Annulation ou Reprogrammation)
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $peutModifier && $rdv['status'] !== 'annulé') {
+            $action = $_POST['action'] ?? '';
+            $logic = new PlanningLogic($this->pdo);
+
+            // Infos actuelles du rendez-vous
+            $currentDate = $dateRdv->format('Y-m-d');
+            $currentTime = $dateRdv->format('H:i');
+            $clientName = $rdv['lastname'];
+
+            // === OPTION 1 : ANNULATION PURE ===
+            if ($action === 'cancel') {
+                $eventId = $logic->findEventId($currentDate, $currentTime, $clientName);
+                if ($eventId) {
+                    $logic->deleteEvent($eventId);
+                }
+
+                $stmt = $this->pdo->prepare("UPDATE quote_requests SET status = 'annulé', appointment_date = NULL WHERE id = ?");
+                $stmt->execute([$rdv['id']]);
+
+                $message_status = '<div class="alert success" style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px; border:1px solid #c8e6c9;"><i class="fas fa-check-circle"></i> Votre rendez-vous a bien été annulé et la place a été libérée dans notre agenda.</div>';
+                $rdv['status'] = 'annulé';
+            }
+
+            // === OPTION 2 : REPROGRAMMATION ===
+            elseif ($action === 'reschedule') {
+                $newDate = $_POST['new_date'] ?? '';
+                $newTime = $_POST['new_time'] ?? '';
+
+                if ($newDate && $newTime) {
+                    // Double vérification : le créneau est-il toujours dispo ?
+                    $slotsCheck = $logic->getAvailableSlots($newDate, $rdv['zip']);
+
+                    if (!isset($slotsCheck['error']) && in_array($newTime, $slotsCheck['slots'])) {
+
+                        // 1. Supprimer l'ancien de Google Agenda
+                        $eventId = $logic->findEventId($currentDate, $currentTime, $clientName);
+                        if ($eventId) {
+                            $logic->deleteEvent($eventId);
+                        }
+
+                        // 2. Créer le nouveau dans Google Agenda
+                        $eventSummary = "En Ligne (DÉPLACÉ): {$rdv['lastname']} {$rdv['firstname']} - {$rdv['phone']}";
+                        $fullAddress = "{$rdv['billing_street']}, {$rdv['zip']} {$rdv['billing_city']}";
+                        $description  = "Client: {$rdv['firstname']} {$rdv['lastname']}\n";
+                        $description .= "Tél: {$rdv['phone']}\n";
+                        $description .= "Email: {$rdv['email']}\n";
+                        $description .= "Adresse: $fullAddress\n";
+                        $description .= "Note: RDV DÉPLACÉ PAR LE CLIENT.\n";
+
+                        $logic->addEvent([
+                            'summary' => $eventSummary,
+                            'location' => $fullAddress,
+                            'description' => $description,
+                            'date' => $newDate,
+                            'time' => $newTime
+                        ]);
+
+                        // 3. Mettre à jour la base de données
+                        $newFullDateTime = $newDate . ' ' . $newTime . ':00';
+                        $stmt = $this->pdo->prepare("UPDATE quote_requests SET appointment_date = ? WHERE id = ?");
+                        $stmt->execute([$newFullDateTime, $rdv['id']]);
+
+                        $message_status = '<div class="alert success" style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px; border:1px solid #c8e6c9;"><i class="fas fa-check-circle"></i> Votre rendez-vous a bien été déplacé au <strong>'.date('d/m/Y', strtotime($newDate)).' à '.$newTime.'</strong>.</div>';
+
+                        // Mise à jour de la variable locale pour la vue
+                        $rdv['appointment_date'] = $newFullDateTime;
+                    } else {
+                        $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; border:1px solid #ef9a9a;"><i class="fas fa-exclamation-circle"></i> Ce créneau n\'est malheureusement plus disponible. Veuillez en choisir un autre.</div>';
+                    }
+                }
+            }
         }
 
         require __DIR__ . '/../views/modifier_rdv.php';

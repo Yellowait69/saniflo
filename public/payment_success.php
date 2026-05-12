@@ -14,6 +14,7 @@ use Stripe\Checkout\Session;
 // ==============================================================================
 // CONFIGURATION STRIPE
 // ==============================================================================
+// Note: Il est recommandé de placer cette clé dans ton fichier .env pour la production
 Stripe::setApiKey('sk_test_51SzZKnCHl8KtnRhXbncHLuJeJt8Oye1xLhdhxudVZCtcmOEu3YbkFX09WpIv60Iik4qpKcVghYyOU0Nd1zvqWfee00aruMK55x');
 
 // Construction de l'URL de base dynamique
@@ -38,9 +39,15 @@ if ($session_id) {
 
             if ($rdv && $rdv['payment_status'] === 'unpaid') {
 
+                // --- SÉCURITÉ : Vérification et génération du Token de modification ---
+                $token = $rdv['edit_token'];
+                if (empty($token)) {
+                    $token = bin2hex(random_bytes(32)); // Génère un token si manquant
+                }
+
                 // --- A. Mise à jour du statut en base ---
-                $updateSql = "UPDATE quote_requests SET payment_status = 'paid', status = 'nouveau' WHERE id = ?";
-                $pdo->prepare($updateSql)->execute([$rdv['id']]);
+                $updateSql = "UPDATE quote_requests SET payment_status = 'paid', status = 'nouveau', edit_token = ? WHERE id = ?";
+                $pdo->prepare($updateSql)->execute([$token, $rdv['id']]);
 
                 // --- B. Ajout à Google Agenda ---
                 $logic = new PlanningLogic($pdo);
@@ -76,7 +83,6 @@ if ($session_id) {
                 ]);
 
                 // --- C. ENVOI DE L'EMAIL DE CONFIRMATION (AVEC LOGO ET LIEN MODIF) ---
-                $token = $rdv['edit_token'];
                 $editLink = $rootUrl . "/index.php?page=modifier_rdv&token=" . $token;
                 $logoUrl = $rootUrl . "/img/logo-saniflo.png";
 
@@ -87,7 +93,7 @@ if ($session_id) {
                 <body style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; background-color: #f9f9f9; padding: 20px;'>
                     <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e0e0e0; padding: 30px; border-radius: 12px;'>
                         <div style='text-align: center; margin-bottom: 30px; border-bottom: 2px solid #f0f0f0; padding-bottom: 20px;'>
-                            <img src='$logoUrl' style='max-width: 200px;'>
+                            <img src='$logoUrl' style='max-width: 200px;' alt='Logo Saniflo'>
                         </div>
                         
                         <h2 style='color: #004a99;'>Paiement confirmé !</h2>
@@ -103,7 +109,7 @@ if ($session_id) {
                             <p style='margin-top: 0; color: #e65100; font-weight: bold;'>Modification de rendez-vous</p>
                             <p style='font-size: 0.95rem; color: #555;'>Besoin de changer de date ? Vous pouvez le faire jusqu'à <strong>7 jours avant</strong> l'intervention :</p>
                             <div style='text-align: center; margin-top: 20px;'>
-                                <a href='$editLink' style='display: inline-block; background: #ffc107; color: #000; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Modifier mon rendez-vous</a>
+                                <a href='$editLink' style='display: inline-block; background: #ffc107; color: #000; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Gérer mon rendez-vous</a>
                             </div>
                         </div>
 
@@ -117,16 +123,22 @@ if ($session_id) {
                 mail($email, $subject, $emailBody, $headers);
 
                 // --- D. Redirection finale ---
-                header("Location: " . $publicUrl . "/index.php?msg=payment_success");
+                // Redirection vers la page de succès
+                header("Location: " . $rootUrl . "/index.php?page=home&msg=payment_success");
+                exit;
+            } else {
+                // Si le RDV est déjà payé ou introuvable, on redirige vers l'accueil sans erreur fatale
+                header("Location: " . $rootUrl . "/index.php?page=home");
                 exit;
             }
         }
     } catch (Exception $e) {
         error_log("Erreur validation Stripe : " . $e->getMessage());
-        header("Location: " . $publicUrl . "/index.php?msg=error");
+        header("Location: " . $rootUrl . "/index.php?page=home&msg=error");
         exit;
     }
 }
 
-header("Location: " . $publicUrl . "/index.php");
+// Redirection par défaut si aucun session_id n'est fourni
+header("Location: " . $rootUrl . "/index.php");
 exit;

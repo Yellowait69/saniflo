@@ -11,6 +11,63 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
     <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        /* Styles spécifiques et responsives pour la page de réservation */
+        .reservation-wrapper {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .booking-card {
+            width: 100%;
+            max-width: 900px;
+            background: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 50px;
+            box-sizing: border-box;
+        }
+
+        .security-badge {
+            text-align: center;
+            margin-top: 25px;
+            opacity: 0.8;
+            font-size: 0.95rem;
+            color: #555;
+        }
+
+        .alert-box {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-warning {
+            background: #fff3e0;
+            color: #e65100;
+            border: 1px solid #ffe0b2;
+        }
+
+        /* Mode Mobile (Téléphones et petites tablettes) */
+        @media (max-width: 768px) {
+            #main-reservation {
+                padding-top: 100px !important;
+                padding-bottom: 40px !important;
+            }
+
+            .booking-card {
+                padding: 25px; /* Réduction drastique du padding sur petit écran */
+                border-radius: 10px;
+            }
+
+            .security-badge {
+                font-size: 0.85rem;
+                padding: 0 10px;
+            }
+        }
+    </style>
 </head>
 <body>
 
@@ -22,45 +79,44 @@
 include __DIR__ . '/partials/header.php';
 ?>
 
-<main id="main" style="padding-top: 120px; padding-bottom: 60px; min-height: 80vh; background: #f8f9fa;">
+<main id="main-reservation" style="padding-top: 140px; padding-bottom: 60px; min-height: 80vh; background: #f8f9fa;">
     <div class="container">
 
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="booking-card shadow-sm p-4 p-md-5 bg-white rounded border-0">
+        <div class="reservation-wrapper">
+            <div class="booking-card">
 
-                    <?php
-                    /**
-                     * AFFICHAGE DES MESSAGES (Succès / Erreur / Annulation Stripe)
-                     * La variable $message_status est générée par le HomeController
-                     */
-                    if (!empty($message_status)) {
-                        echo '<div class="mb-4">' . $message_status . '</div>';
-                    }
+                <?php
+                /**
+                 * AFFICHAGE DES MESSAGES (Succès / Erreur / Annulation Stripe)
+                 * La variable $message_status est générée par le HomeController
+                 */
+                if (!empty($message_status)) {
+                    echo '<div class="alert-box">' . $message_status . '</div>';
+                }
 
-                    // Message d'annulation spécifique Stripe via URL
-                    if (isset($_GET['msg']) && $_GET['msg'] === 'cancel') {
-                        echo '<div class="alert warning" style="background:#fff3e0; color:#e65100; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #ffe0b2;">
-                                <i class="fas fa-exclamation-triangle"></i> Le paiement a été annulé. Votre créneau n\'a pas été réservé.
-                              </div>';
-                    }
-                    ?>
+                // Message d'annulation spécifique Stripe via URL
+                if (isset($_GET['msg']) && $_GET['msg'] === 'cancel') {
+                    echo '<div class="alert-box alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i> Le paiement a été annulé. Votre créneau n\'a pas été réservé.
+                          </div>';
+                }
+                ?>
 
-                    <?php
-                    /**
-                     * 2. FORMULAIRE WIZARD ÉTAPE PAR ÉTAPE
-                     * C'est ici que toute la logique de sélection s'affiche
-                     */
-                    include __DIR__ . '/partials/quote_wizard.php';
-                    ?>
+                <?php
+                /**
+                 * 2. FORMULAIRE WIZARD ÉTAPE PAR ÉTAPE
+                 * C'est ici que toute la logique de sélection s'affiche (fichier rendu responsive précédemment)
+                 */
+                include __DIR__ . '/partials/quote_wizard.php';
+                ?>
 
-                </div>
-
-                <div class="text-center mt-4" style="opacity: 0.7; font-size: 0.9rem;">
-                    <p><i class="fas fa-lock"></i> Paiement 100% sécurisé via Stripe &bull; Confirmation immédiate par email</p>
-                </div>
             </div>
         </div>
+
+        <div class="security-badge">
+            <p><i class="fas fa-lock" style="color: #2e7d32; margin-right: 5px;"></i> Paiement 100% sécurisé via Stripe &bull; Confirmation immédiate par email</p>
+        </div>
+
     </div>
 </main>
 

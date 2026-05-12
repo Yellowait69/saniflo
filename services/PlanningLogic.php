@@ -333,5 +333,57 @@ class PlanningLogic {
         ]);
         $this->service->events->insert($this->calendarId, $event);
     }
+
+    // ==============================================================================
+    // NOUVELLES MÉTHODES POUR LA GESTION (ANNULATION ET REPROGRAMMATION)
+    // ==============================================================================
+
+    // Cherche un événement par date, heure et nom du client
+    public function findEventId($date, $time, $clientName) {
+        $startDateTime = $date . 'T' . $time . ':00';
+        $tzBrussels = new DateTimeZone('Europe/Brussels');
+
+        $optParams = [
+            'timeMin' => date('c', strtotime($startDateTime) - 3600), // 1h avant
+            'timeMax' => date('c', strtotime($startDateTime) + 3600), // 1h après
+            'singleEvents' => true,
+        ];
+
+        try {
+            $events = $this->service->events->listEvents($this->calendarId, $optParams)->getItems();
+            foreach ($events as $event) {
+                if (empty($event->start->dateTime)) continue;
+
+                $dt = new DateTime($event->start->dateTime);
+                $dt->setTimezone($tzBrussels);
+
+                // Si la date et l'heure correspondent exactement
+                if ($dt->format('Y-m-d H:i') === "$date $time") {
+                    $summary = strtolower((string)$event->getSummary());
+                    $desc = strtolower((string)$event->getDescription());
+                    $nameSearch = strtolower($clientName);
+
+                    // On vérifie que le nom de famille est bien dans l'événement (Sécurité)
+                    if (strpos($summary, $nameSearch) !== false || strpos($desc, $nameSearch) !== false) {
+                        return $event->getId();
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Erreur recherche event : " . $e->getMessage());
+        }
+        return null;
+    }
+
+    // Supprime un événement par son ID Google
+    public function deleteEvent($eventId) {
+        try {
+            $this->service->events->delete($this->calendarId, $eventId);
+            return true;
+        } catch (Exception $e) {
+            error_log("Erreur suppression event : " . $e->getMessage());
+            return false;
+        }
+    }
 }
 ?>
