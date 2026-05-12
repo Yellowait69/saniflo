@@ -16,7 +16,7 @@
                     <li><a href="index.php#services">Services</a></li>
                     <li><a href="index.php#realisations">Réalisations</a></li>
                     <li><a href="index.php?page=reservation#devis-wizard">Prendre Rendez-vous</a></li>
-                    <li><a href="index.php#contact">Contact</a></li>
+                    <li><a href="index.php?page=contact#contact-section">Contact</a></li>
                     <li><a href="index.php#nb-avis-top">Avis Clients</a></li>
                 </ul>
             </div>

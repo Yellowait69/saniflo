@@ -18,48 +18,17 @@ class HomeController {
     }
 
     // =================================================================
-    // PAGE D'ACCUEIL (Vitrine + Formulaire de contact classique)
+    // PAGE D'ACCUEIL (Vitrine uniquement)
     // =================================================================
     public function index() {
-        // Initialisation session
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        // Génération du token CSRF
+
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
 
-        $message_status = '';
-
-        // Traitement du Formulaire de Contact (POST)
-        if ($_SERVER["REQUEST_METHOD"] == "POST") {
-            // --- VÉRIFICATION DU TOKEN CSRF ---
-            if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-                $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #ef9a9a;">Erreur de sécurité. Votre session a expiré ou la requête est invalide. Veuillez rafraîchir la page.</div>';
-            } else {
-                // --- FORMULAIRE DE CONTACT (Simple) ---
-                if (isset($_POST['nom']) && isset($_POST['message']) && !isset($_POST['appointment_date'])) {
-                    $nom = htmlspecialchars(strip_tags(trim($_POST['nom'])));
-                    $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
-                    $tel = htmlspecialchars(strip_tags(trim($_POST['tel'])));
-                    $objet = htmlspecialchars(strip_tags(trim($_POST['objet'] ?? 'Information')));
-                    $message = htmlspecialchars(strip_tags(trim($_POST['message'])));
-
-                    if (!empty($nom) && !empty($email) && !empty($message) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                        try {
-                            $stmt = $this->pdo->prepare("INSERT INTO messages (nom, email, telephone, subject, message) VALUES (?, ?, ?, ?, ?)");
-                            $stmt->execute([$nom, $email, $tel, $objet, $message]);
-                            $message_status = '<div class="alert success" style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #a5d6a7;">Merci ! Votre demande a bien été enregistrée.</div>';
-                        } catch (Exception $e) {
-                            $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #ef9a9a;">Erreur technique lors de l\'envoi.</div>';
-                        }
-                    }
-                }
-            }
-        }
-
-        // Récupération des données pour la vue vitrine
         try {
             $certifications = Certification::getAll($this->pdo);
             $teamMembers = Team::getAll($this->pdo);
@@ -73,29 +42,173 @@ class HomeController {
     }
 
     // =================================================================
-    // PAGE DE RÉSERVATION (Wizard + Google Agenda + Stripe)
+    // PAGE DE CONTACT DÉDIÉE (AVEC ENVOI D'EMAIL ET LOGO)
     // =================================================================
-    public function reservation() {
-        // Initialisation session
+    public function contact() {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        // Génération du token CSRF
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
 
         $message_status = '';
 
-        // Traitement du formulaire Wizard (POST)
+        if ($_SERVER["REQUEST_METHOD"] == "POST") {
+            if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+                $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #ef9a9a;">Erreur de sécurité. Votre session a expiré ou la requête est invalide. Veuillez rafraîchir la page.</div>';
+            } else {
+                if (isset($_POST['nom']) && isset($_POST['message']) && !isset($_POST['appointment_date'])) {
+                    $nom = htmlspecialchars(strip_tags(trim($_POST['nom'])));
+                    $emailClient = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
+                    $tel = htmlspecialchars(strip_tags(trim($_POST['tel'])));
+                    $objetRaw = htmlspecialchars(strip_tags(trim($_POST['objet'] ?? 'info')));
+                    $messageContent = htmlspecialchars(strip_tags(trim($_POST['message'])));
+
+                    if (!empty($nom) && !empty($emailClient) && !empty($messageContent) && filter_var($emailClient, FILTER_VALIDATE_EMAIL)) {
+                        try {
+                            // 1. Enregistrement en base de données
+                            $stmt = $this->pdo->prepare("INSERT INTO messages (nom, email, telephone, subject, message) VALUES (?, ?, ?, ?, ?)");
+                            $stmt->execute([$nom, $emailClient, $tel, $objetRaw, $messageContent]);
+
+                            // 2. Préparation du libellé de l'objet pour le mail
+                            $labels = [
+                                'devis' => 'Demande de devis',
+                                'entretien' => 'Demande d\'entretien',
+                                'info' => 'Demande d\'information',
+                                'autre' => 'Autre demande'
+                            ];
+                            $objetLabel = $labels[$objetRaw] ?? 'Prise de contact';
+
+                            // 3. ENVOI DE L'EMAIL DE CONFIRMATION AU CLIENT
+                            $to = $emailClient;
+                            $subject = "Accusé de réception - Saniflo SRL";
+
+                            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+                            $host = $_SERVER['HTTP_HOST'];
+                            $logoUrl = $protocol . "://" . $host . "/img/logo-saniflo.png";
+
+                            $emailBody = "
+                            <html>
+                            <body style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; background-color: #f9f9f9; padding: 20px;'>
+                                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e0e0e0; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);'>
+                                    
+                                    <div style='text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #f0f0f0;'>
+                                        <img src='$logoUrl' alt='Saniflo SRL' style='max-width: 200px; height: auto;'>
+                                    </div>
+
+                                    <h2 style='color: #004a99; font-size: 1.4rem;'>Bonjour $nom,</h2>
+                                    <p>Nous avons bien reçu votre message concernant : <strong style='color: #004a99;'>$objetLabel</strong>.</p>
+                                    <p>Toute l'équipe de <strong>Saniflo SRL</strong> vous remercie pour votre confiance. Nous traiterons votre demande avec la plus grande attention et l'un de nos experts reviendra vers vous très prochainement.</p>
+                                    
+                                    <div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 30px 0; border-left: 4px solid #ffc107;'>
+                                        <p style='margin-top: 0; font-size: 1.1rem; color: #004a99; border-bottom: 1px solid #ddd; padding-bottom: 10px;'><strong>Rappel de votre demande :</strong></p>
+                                        <ul style='list-style-type: none; padding-left: 0; font-size: 0.95rem; color: #444;'>
+                                            <li style='margin-bottom: 8px;'><strong>Nom :</strong> $nom</li>
+                                            <li style='margin-bottom: 8px;'><strong>Email :</strong> $emailClient</li>
+                                            <li style='margin-bottom: 8px;'><strong>Téléphone :</strong> $tel</li>
+                                            <li style='margin-bottom: 8px;'><strong>Objet :</strong> $objetLabel</li>
+                                        </ul>
+                                        <p style='font-size: 0.95rem; color: #444; margin-bottom: 5px; margin-top: 15px;'><strong>Votre message :</strong></p>
+                                        <div style='font-size: 0.95rem; color: #555; font-style: italic; background: #fff; padding: 15px; border: 1px solid #e0e0e0; border-radius: 6px;'>
+                                            " . nl2br($messageContent) . "
+                                        </div>
+                                    </div>
+
+                                    <p style='margin-top: 30px; font-size: 1rem;'>Cordialement,<br><strong style='color: #004a99;'>L'équipe Saniflo SRL</strong></p>
+                                    
+                                    <div style='margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; font-size: 0.8rem; color: #999;'>
+                                        <p style='margin: 0;'><strong>Saniflo SRL</strong> - Votre expert en Chauffage & Sanitaire</p>
+                                        <p style='margin: 5px 0;'>Rue de Fontenelle 15, 1325 Dion-Valmont</p>
+                                        <p style='margin: 0;'><a href='$protocol://$host' style='color: #004a99; text-decoration: none;'>www.saniflo.be</a> | 0495 50 17 17</p>
+                                    </div>
+
+                                </div>
+                            </body>
+                            </html>";
+
+                            $headers = "MIME-Version: 1.0" . "\r\n";
+                            $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+                            $headers .= "From: Saniflo SRL <info@saniflo.be>" . "\r\n";
+                            $headers .= "Reply-To: info@saniflo.be" . "\r\n";
+
+                            mail($to, $subject, $emailBody, $headers);
+
+                            $message_status = '<div class="alert success" style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #a5d6a7;">Merci ! Votre demande a été envoyée et un mail de confirmation avec le récapitulatif vous a été adressé.</div>';
+                        } catch (Exception $e) {
+                            $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #ef9a9a;">Erreur technique lors de l\'envoi.</div>';
+                        }
+                    }
+                }
+            }
+        }
+
+        try {
+            $certifications = Certification::getAll($this->pdo);
+        } catch (Exception $e) {
+            $certifications = [];
+        }
+
+        require __DIR__ . '/../views/contact_page.php';
+    }
+
+    // =================================================================
+    // LOGIQUE DE MODIFICATION DE RENDEZ-VOUS (NOUVEAU)
+    // =================================================================
+    public function modifier_rdv() {
+        if (session_status() === PHP_SESSION_NONE) { session_start(); }
+
+        $token = $_GET['token'] ?? '';
+        $message_status = '';
+
+        if (empty($token)) {
+            header("Location: index.php"); exit;
+        }
+
+        // 1. Récupération du rendez-vous via le token
+        $stmt = $this->pdo->prepare("SELECT * FROM quote_requests WHERE edit_token = ?");
+        $stmt->execute([$token]);
+        $rdv = $stmt->fetch();
+
+        if (!$rdv) {
+            die("Lien invalide ou expiré.");
+        }
+
+        // 2. Vérification de la règle des 7 jours
+        $dateRdv = new DateTime($rdv['appointment_date']);
+        $maintenant = new DateTime();
+        $interval = $maintenant->diff($dateRdv);
+        $joursRestants = (int)$interval->format('%r%a');
+
+        $peutModifier = ($joursRestants >= 7);
+
+        // 3. Traitement de la demande de modification
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $peutModifier) {
+            $message_status = '<div class="alert success" style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px; margin-top:20px; border:1px solid #c8e6c9;">Votre demande de modification a bien été transmise. Nous vous recontacterons très vite pour fixer une nouvelle date.</div>';
+        }
+
+        require __DIR__ . '/../views/modifier_rdv.php';
+    }
+
+    // =================================================================
+    // PAGE DE RÉSERVATION (Wizard + Google Agenda + Stripe)
+    // =================================================================
+    public function reservation() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
+        $message_status = '';
+
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-            // --- VÉRIFICATION DU TOKEN CSRF ---
             if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
                 $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #ef9a9a;">Erreur de sécurité. Votre session a expiré ou la requête est invalide. Veuillez rafraîchir la page.</div>';
             } else {
 
-                // --- TRAITEMENT DU WIZARD ---
                 if (isset($_POST['appointment_date'])) {
                     try {
                         // Récupération des données
@@ -103,8 +216,10 @@ class HomeController {
                         $heureRdv = $_POST['appointment_time'] ?? '';
                         $zip = (int)($_POST['zip'] ?? 0);
 
-                        // --- 1. SÉCURITÉ : On vérifie la dispo via PlanningLogic ---
-                        // On passe $this->pdo à PlanningLogic pour la limite de 15 minutes
+                        // On génère un jeton unique pour permettre la modification ultérieure
+                        $tokenEdit = bin2hex(random_bytes(16));
+
+                        // Vérification de la dispo via PlanningLogic
                         $logic = new PlanningLogic($this->pdo);
                         $slotsCheck = $logic->getAvailableSlots($dateRdv, $zip);
 
@@ -115,7 +230,6 @@ class HomeController {
                             throw new Exception("Attention : Ce créneau ($heureRdv) n'est plus disponible. Veuillez réessayer.");
                         }
 
-                        // --- 2. PRÉPARATION DONNÉES INSERTION ---
                         $is_company = (int)($_POST['is_company'] ?? 0);
                         $full_datetime = $dateRdv . ' ' . $heureRdv . ':00';
                         $worksite_same = isset($_POST['worksite_same']) ? 1 : 0;
@@ -133,15 +247,14 @@ class HomeController {
 
                         $paymentMethod = $_POST['payment_method'] ?? 'stripe';
 
-                        // --- CALCUL DE LA TVA ---
+                        // CALCUL DE LA TVA
                         $priceHtva = (float)($_POST['total_price_htva'] ?? 0);
                         $housingYear = !empty($_POST['housing_year']) ? (int)$_POST['housing_year'] : date('Y');
 
-                        // Si le bâtiment a 10 ans ou plus -> 6%, sinon -> 21%
                         $ageBatiment = date('Y') - $housingYear;
                         $tauxTVA = ($ageBatiment >= 10) ? 0.06 : 0.21;
 
-                        $priceTTC = $priceHtva * (1 + $tauxTVA); // Prix final à envoyer à Stripe
+                        $priceTTC = $priceHtva * (1 + $tauxTVA);
 
                         // Transformation du nom du service
                         $serviceMap = [
@@ -151,24 +264,24 @@ class HomeController {
                         ];
                         $serviceLabel = $serviceMap[$service] ?? ucwords(str_replace('_', ' ', $service));
 
-                        // --- 3. INSERTION EN BASE ---
                         $initialStatus = ($paymentMethod === 'stripe') ? 'en_attente' : 'nouveau';
                         $initialPaymentStatus = ($paymentMethod === 'stripe') ? 'unpaid' : 'pending_on_site';
 
+                        // INSERTION EN BASE (avec le edit_token)
                         $sql = "INSERT INTO quote_requests (
                             is_company, company_name, vat_number, vat_regime, housing_year,
                             firstname, lastname, email, phone, 
                             billing_street, billing_box, billing_zip, billing_city,
                             worksite_same_as_billing, worksite_name, worksite_street, worksite_box, worksite_zip, worksite_city, worksite_phone, worksite_email,
                             device_model, device_serial, device_year, device_kw,
-                            appointment_date, payment_method, total_price_htva, description, status, payment_status
+                            appointment_date, payment_method, total_price_htva, description, status, payment_status, edit_token
                         ) VALUES (
                             ?, ?, ?, ?, ?, 
                             ?, ?, ?, ?, 
                             ?, ?, ?, ?, 
                             ?, ?, ?, ?, ?, ?, ?, ?, 
                             ?, ?, ?, ?, 
-                            ?, ?, ?, ?, ?, ?
+                            ?, ?, ?, ?, ?, ?, ?
                         )";
 
                         $stmt = $this->pdo->prepare($sql);
@@ -178,20 +291,17 @@ class HomeController {
                             $rue, $_POST['billing_box'] ?? null, $cp, $ville,
                             $worksite_same, $_POST['worksite_name'] ?? null, $_POST['worksite_street'] ?? null, $_POST['worksite_box'] ?? null, $_POST['worksite_zip'] ?? null, $_POST['worksite_city'] ?? null, $_POST['worksite_phone'] ?? null, $_POST['worksite_email'] ?? null,
                             $_POST['device_model'] ?? null, $_POST['device_serial'] ?? null, !empty($_POST['device_year']) ? $_POST['device_year'] : null, $_POST['device_kw'] ?? null,
-                            $full_datetime, $paymentMethod, $priceHtva, $descUser, $initialStatus, $initialPaymentStatus
+                            $full_datetime, $paymentMethod, $priceHtva, $descUser, $initialStatus, $initialPaymentStatus, $tokenEdit
                         ]);
 
                         $lastInsertId = $this->pdo->lastInsertId();
 
-                        // --- 4. BRANCHE CONDITIONNELLE : STRIPE OU AGENDA ---
                         if ($paymentMethod === 'stripe') {
                             // === CAS 1 : PAIEMENT EN LIGNE ===
-
                             Stripe::setApiKey('sk_test_51SzZKnCHl8KtnRhXbncHLuJeJt8Oye1xLhdhxudVZCtcmOEu3YbkFX09WpIv60Iik4qpKcVghYyOU0Nd1zvqWfee00aruMK55x');
 
                             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
                             $host = $_SERVER['HTTP_HOST'];
-
                             $publicUrl = $protocol . "://" . $host . "/public";
                             $rootUrl = $protocol . "://" . $host;
 
@@ -209,9 +319,7 @@ class HomeController {
                                     'quantity' => 1,
                                 ]],
                                 'mode' => 'payment',
-                                // En cas de succès
                                 'success_url' => $publicUrl . '/payment_success.php?session_id={CHECKOUT_SESSION_ID}',
-                                // En cas d'annulation -> on renvoie sur la page de réservation
                                 'cancel_url' => $rootUrl . '/index.php?page=reservation&msg=cancel',
                             ]);
 
@@ -242,7 +350,10 @@ class HomeController {
                                 'time' => $heureRdv
                             ]);
 
-                            $message_status = '<div class="alert success" style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #a5d6a7;">C\'est confirmé ! Le rendez-vous est ajouté à l\'agenda et enregistré.</div>';
+                            // On envoie le mail de confirmation avec le lien de modification
+                            $this->sendReservationEmail($emailClient, $prenom, $nom, $serviceLabel, $dateRdv, $heureRdv, $tokenEdit);
+
+                            $message_status = '<div class="alert success" style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #a5d6a7;">C\'est confirmé ! Le rendez-vous est ajouté à l\'agenda. Un email récapitulatif vous a été envoyé.</div>';
                         }
 
                     } catch (Exception $e) {
@@ -252,15 +363,61 @@ class HomeController {
             }
         }
 
-        // --- RÉCUPÉRATION DES CERTIFICATIONS POUR LA PAGE DE RÉSERVATION ---
         try {
             $certifications = Certification::getAll($this->pdo);
         } catch (Exception $e) {
             $certifications = [];
         }
 
-        // On charge la nouvelle vue dédiée au lieu de home.php
         require __DIR__ . '/../views/reservation.php';
+    }
+
+    // =================================================================
+    // HELPER : ENVOI DE L'EMAIL DE RÉSERVATION (NOUVEAU)
+    // =================================================================
+    private function sendReservationEmail($to, $prenom, $nom, $service, $date, $heure, $token) {
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+        $host = $_SERVER['HTTP_HOST'];
+        $link = $protocol . "://" . $host . "/index.php?page=modifier_rdv&token=" . $token;
+        $logoUrl = $protocol . "://" . $host . "/img/logo-saniflo.png";
+
+        $dateFr = date('d/m/Y', strtotime($date));
+        $subject = "Confirmation de votre rendez-vous - Saniflo SRL";
+
+        $body = "
+        <html>
+        <body style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; background-color: #f9f9f9; padding: 20px;'>
+            <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e0e0e0; padding: 30px; border-radius: 12px;'>
+                <div style='text-align: center; margin-bottom: 30px; border-bottom: 2px solid #f0f0f0; padding-bottom: 20px;'>
+                    <img src='$logoUrl' style='max-width: 200px;'>
+                </div>
+                
+                <h2 style='color: #004a99;'>Confirmation de votre rendez-vous</h2>
+                <p>Bonjour $prenom $nom,</p>
+                <p>Nous vous confirmons que votre intervention pour : <strong>$service</strong> a bien été enregistrée dans notre planning.</p>
+                
+                <div style='background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #004a99;'>
+                    <p style='margin: 0; font-size: 1.1rem;'><strong>Date :</strong> Le $dateFr</p>
+                    <p style='margin: 5px 0 0 0; font-size: 1.1rem;'><strong>Heure d'arrivée estimée :</strong> $heure</p>
+                </div>
+                
+                <div style='background: #fffdf5; padding: 20px; border-radius: 8px; border: 1px solid #ffe0b2; margin: 30px 0;'>
+                    <p style='margin-top: 0; color: #e65100; font-weight: bold;'>Un imprévu ?</p>
+                    <p style='font-size: 0.95rem; color: #555;'>Vous avez la possibilité de demander une modification de votre créneau jusqu'à <strong>7 jours avant</strong> la date prévue.</p>
+                    <div style='text-align: center; margin-top: 20px;'>
+                        <a href='$link' style='display: inline-block; background: #ffc107; color: #000; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Modifier mon rendez-vous</a>
+                    </div>
+                </div>
+
+                <p style='font-size: 0.85rem; color: #777;'>Note : Passé ce délai de 7 jours, toute modification devra se faire impérativement par téléphone au 0495 50 17 17.</p>
+                
+                <p style='margin-top: 30px;'>L'équipe Saniflo SRL vous remercie pour votre confiance.</p>
+            </div>
+        </body>
+        </html>";
+
+        $headers = "MIME-Version: 1.0\r\nContent-type:text/html;charset=UTF-8\r\nFrom: Saniflo SRL <info@saniflo.be>\r\n";
+        mail($to, $subject, $body, $headers);
     }
 }
 ?>

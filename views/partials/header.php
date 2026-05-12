@@ -1,3 +1,124 @@
+<style>
+    /* =========================================
+       STYLES RESPONSIVES DE L'EN-TÊTE
+       ========================================= */
+    .hero-badge-date {
+        position: absolute;
+        top: 50px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 1.2rem;
+        font-weight: 700;
+        padding: 8px 25px;
+        letter-spacing: 2px;
+        z-index: 99;
+        white-space: nowrap;
+        background: var(--accent-yellow); /* Assurez-vous d'avoir un fond pour le badge */
+        color: var(--primary-dark);
+        border-radius: 30px;
+    }
+
+    .hero-h1-title {
+        margin-top: 50px;
+    }
+
+    .cta-box {
+        margin-top: 35px;
+        padding: 25px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 12px;
+        border-left: 4px solid var(--accent-yellow);
+        backdrop-filter: blur(8px);
+    }
+
+    .cta-btn-link {
+        text-decoration: none !important;
+        padding: 12px 20px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        transition: all 0.3s ease;
+    }
+
+    .cta-icon-wrapper {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    /* Bouton Jaune (RDV) */
+    .btn-yellow {
+        background: var(--accent-yellow);
+        color: var(--primary-dark);
+        box-shadow: 0 4px 10px rgba(255, 196, 0, 0.3);
+    }
+    .btn-yellow:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(255, 196, 0, 0.4);
+    }
+    .btn-yellow .cta-icon-wrapper { background: rgba(255,255,255,0.4); }
+
+    /* Bouton Bleu (Devis) */
+    .btn-blue {
+        background: var(--primary-blue);
+        color: white;
+    }
+    .btn-blue:hover { background: var(--primary-dark); }
+    .btn-blue .cta-icon-wrapper { background: rgba(255,255,255,0.2); }
+
+    /* Bouton Transparent (Contact) */
+    .btn-outline {
+        background: rgba(255,255,255,0.05);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-outline:hover { background: rgba(255,255,255,0.15); }
+    .btn-outline .cta-icon-wrapper { background: rgba(255,255,255,0.1); }
+
+    /* --- ADAPTATION POUR MOBILES ET TABLETTES --- */
+    @media (max-width: 768px) {
+        .hero-badge-date {
+            position: relative; /* On annule l'absolu qui déborde sur mobile */
+            top: 0;
+            left: 0;
+            transform: none;
+            display: inline-block;
+            margin-bottom: 20px;
+            font-size: 1rem;
+            padding: 5px 15px;
+        }
+
+        .hero-h1-title {
+            margin-top: 0; /* Plus besoin de marge car le badge n'est plus en position absolue */
+            font-size: 2rem;
+            line-height: 1.2;
+        }
+
+        .cta-box {
+            padding: 15px;
+            margin-top: 25px;
+        }
+
+        .cta-btn-link {
+            padding: 10px 15px;
+            gap: 12px;
+        }
+
+        .cta-icon-wrapper {
+            width: 35px;
+            height: 35px;
+        }
+
+        .cta-title { font-size: 0.9rem !important; }
+        .cta-desc { font-size: 0.75rem !important; }
+    }
+</style>
+
 <nav>
     <div class="logo">
         <a href="index.php"><img src="img/logo-saniflo.png" alt="Saniflo SRL Logo"></a>
@@ -20,57 +141,46 @@
     <div class="container hero-grid">
 
         <div class="hero-text-side">
-            <span class="badge" style="
-                position: absolute;
-                top: 50px;
-                left: 50%;
-                transform: translateX(-50%);
-                font-size: 1.2rem;
-                font-weight: 700;
-                padding: 8px 25px;
-                letter-spacing: 2px;
-                z-index: 99;
-                white-space: nowrap;
-            ">Depuis 1997</span>
+            <span class="badge hero-badge-date">Depuis 1997</span>
 
-            <h1 style="margin-top: 50px;">Votre Expert en <br>Chauffage & Sanitaire</h1>
+            <h1 class="hero-h1-title">Votre Expert en <br>Chauffage & Sanitaire</h1>
 
             <p>Installation, rénovation et dépannage dans tout le Brabant Wallon. <br>Une expertise dirigée par <strong>Jean-François Dengis</strong> et <strong>Florence Lambinon</strong>.</p>
 
-            <div style="margin-top: 35px; padding: 25px; background: rgba(0, 0, 0, 0.4); border-radius: 12px; border-left: 4px solid var(--accent-yellow); backdrop-filter: blur(8px);">
+            <div class="cta-box">
                 <p style="margin-bottom: 20px; font-weight: 600; color: #fff; font-size: 1.1rem;">
                     <i class="fas fa-mouse-pointer"></i> Comment pouvons-nous vous aider ?
                 </p>
 
                 <div style="display: flex; flex-direction: column; gap: 15px;">
 
-                    <a href="index.php?page=reservation#devis-wizard" style="text-decoration: none; background: var(--accent-yellow); color: var(--primary-dark); padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; transition: transform 0.3s; box-shadow: 0 4px 10px rgba(255, 196, 0, 0.3);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                        <div style="background: rgba(255,255,255,0.3); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <a href="index.php?page=reservation#devis-wizard" class="cta-btn-link btn-yellow">
+                        <div class="cta-icon-wrapper">
                             <i class="fas fa-calendar-check" style="font-size: 1.2rem; color: var(--primary-dark);"></i>
                         </div>
                         <div>
-                            <span style="display: block; font-weight: 800; font-size: 1rem; text-transform: uppercase;">Planifier un Entretien</span>
-                            <span style="display: block; font-size: 0.8rem; font-weight: 600; opacity: 0.9;">Agenda en ligne (Gaz, Mazout, Adoucisseur)</span>
+                            <span class="cta-title" style="display: block; font-weight: 800; font-size: 1rem; text-transform: uppercase;">Planifier un Entretien</span>
+                            <span class="cta-desc" style="display: block; font-size: 0.8rem; font-weight: 600; opacity: 0.9;">Agenda en ligne (Gaz, Mazout, Adoucisseur)</span>
                         </div>
                     </a>
 
-                    <a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank" style="text-decoration: none; background: var(--primary-blue); color: white; padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; transition: background 0.3s;" onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary-blue)'">
-                        <div style="background: rgba(255,255,255,0.2); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank" class="cta-btn-link btn-blue">
+                        <div class="cta-icon-wrapper">
                             <i class="fas fa-file-invoice-dollar" style="font-size: 1.2rem; color: white;"></i>
                         </div>
                         <div>
-                            <span style="display: block; font-weight: 700; font-size: 1rem;">Demander un Devis Gratuit : Estimation</span>
-                            <span style="display: block; font-size: 0.8rem; opacity: 0.9;">Installation/remplacement de chaudière Viessmann</span>
+                            <span class="cta-title" style="display: block; font-weight: 700; font-size: 1rem;">Demander un Devis Gratuit : Estimation</span>
+                            <span class="cta-desc" style="display: block; font-size: 0.8rem; opacity: 0.9;">Installation/remplacement de chaudière Viessmann</span>
                         </div>
                     </a>
 
-                    <a href="index.php#contact" style="text-decoration: none; background: rgba(255,255,255,0.1); color: white; padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 1px solid rgba(255,255,255,0.2); transition: background 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-                        <div style="background: rgba(255,255,255,0.1); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <a href="index.php?page=contact#contact-section" class="cta-btn-link btn-outline">
+                        <div class="cta-icon-wrapper">
                             <i class="fas fa-tools" style="font-size: 1.1rem; color: white;"></i>
                         </div>
                         <div>
-                            <span style="display: block; font-weight: 600; font-size: 1rem;">Contact pour les autres demandes</span>
-                            <span style="display: block; font-size: 0.8rem; opacity: 0.7;">Renseignements, autres demandes d'intervention,...</span>
+                            <span class="cta-title" style="display: block; font-weight: 600; font-size: 1rem;">Contact pour les autres demandes</span>
+                            <span class="cta-desc" style="display: block; font-size: 0.8rem; opacity: 0.7;">Renseignements, autres demandes d'intervention,...</span>
                         </div>
                     </a>
 
@@ -122,11 +232,9 @@
 
 <script>
     function toggleCertRegion(headerElement) {
-        // Sélectionne le contenu qui suit juste après le header cliqué
         var content = headerElement.nextElementSibling;
         var arrow = headerElement.querySelector('.region-arrow');
 
-        // Bascule l'affichage
         if (content.style.display === "none") {
             content.style.display = "block";
             if(arrow) arrow.style.transform = "rotate(180deg)";

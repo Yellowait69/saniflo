@@ -1,4 +1,4 @@
-<section id="devis-wizard" class="section-padding">
+<section id="devis-wizard" style="scroll-margin-top: 120px;" class="section-padding">
     <div class="container">
         <div class="wizard-container">
             <div class="section-title">
@@ -6,7 +6,6 @@
                 <p>Vos informations complètes pour une intervention efficace.</p>
             </div>
 
-            <?= $message_status ?? '' ?>
 
             <div id="zone-alert" style="display:none; margin-bottom: 20px; padding: 15px; border-radius: 8px; border-left: 5px solid #ff9800; background: #fff3e0; color: #e65100;">
                 <i class="fas fa-exclamation-triangle"></i> <span id="zone-alert-text"></span>

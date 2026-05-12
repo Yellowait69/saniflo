@@ -25,13 +25,6 @@ include __DIR__ . '/partials/header.php';
 <main id="main" style="padding-top: 120px; padding-bottom: 60px; min-height: 80vh; background: #f8f9fa;">
     <div class="container">
 
-        <div class="section-title text-center mb-5">
-            <h2 style="font-weight: 700; color: var(--primary-dark);">Planifier votre intervention</h2>
-            <p style="color: #666; max-width: 600px; margin: 0 auto;">
-                Simple, rapide et sécurisé. Réservez votre créneau en ligne en moins de 2 minutes.
-            </p>
-        </div>
-
         <div class="row justify-content-center">
             <div class="col-lg-10">
                 <div class="booking-card shadow-sm p-4 p-md-5 bg-white rounded border-0">

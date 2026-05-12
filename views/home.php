@@ -28,8 +28,10 @@ include __DIR__ . '/partials/portfolio.php';
 // 5. Avis clients
 include __DIR__ . '/partials/reviews.php';
 
-// 6. Formulaire de contact basique & Footer
-include __DIR__ . '/partials/contact.php';
+// Note : Le formulaire de contact a été déplacé sur la page dédiée (views/contact_page.php).
+// La page d'accueil est désormais 100% allégée et orientée "Vitrine".
+
+// 6. Pied de page
 include __DIR__ . '/partials/footer.php';
 ?>
 

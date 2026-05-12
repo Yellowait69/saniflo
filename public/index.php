@@ -45,8 +45,18 @@ $page = $_GET['page'] ?? 'home';
 
 switch ($page) {
     case 'reservation':
-        // Affiche la nouvelle page de prise de rendez-vous dédiée
+        // Affiche la page de prise de rendez-vous dédiée (Wizard)
         $controller->reservation();
+        break;
+
+    case 'contact':
+        // Affiche la nouvelle page de contact dédiée
+        $controller->contact();
+        break;
+
+    case 'modifier_rdv':
+        // Affiche la page permettant au client de demander la modification de son RDV
+        $controller->modifier_rdv();
         break;
 
     case 'home':
