@@ -5,9 +5,16 @@ require_once __DIR__ . '/../vendor/autoload.php';
 class PlanningLogic {
     private $service;
     private $calendarId;
-    private $pdo; // Ajout de la variable pour la base de données
+    private $pdo;
 
-    // Ajout du paramètre $pdo (optionnel pour ne pas casser l'existant s'il est oublié quelque part)
+    // =========================================================
+    // CONFIGURATION DES HORAIRES ET BATTEMENTS (MODIFIABLE ICI)
+    // =========================================================
+    private $slotDuration = 45; // Durée effective de l'intervention (en minutes)
+    private $slotBuffer = 15;   // Temps de trajet / battement obligatoire (en minutes)
+    private $maxDailyAppts = 6; // Nombre maximum de RDV par jour
+    // =========================================================
+
     public function __construct($pdo = null) {
         $client = new Google_Client();
         $client->setAuthConfig(__DIR__ . '/../config/service-account.json');
@@ -42,10 +49,9 @@ class PlanningLogic {
             $eventsByDay[$dayKey][] = $event;
         }
 
-        // --- NOUVEAU : RÉCUPÉRATION DES CRÉNEAUX BLOQUÉS EN BASE DE DONNÉES ---
+        // --- RÉCUPÉRATION DES CRÉNEAUX BLOQUÉS EN BASE DE DONNÉES ---
         $dbOccupied = [];
         if ($this->pdo) {
-            // On bloque les RDV validés, ET les RDV en attente de paiement depuis moins de 15 min
             $sql = "SELECT appointment_date 
                     FROM quote_requests 
                     WHERE appointment_date IS NOT NULL 
@@ -60,11 +66,10 @@ class PlanningLogic {
                 $startTs = $dt->getTimestamp();
                 $dbOccupied[] = [
                     'start' => $startTs,
-                    'end'   => $startTs + (45 * 60) // Un créneau dure 45 min
+                    'end'   => $startTs + ($this->slotDuration * 60)
                 ];
             }
         }
-        // ----------------------------------------------------------------------
 
         $results = [];
         $currentDate = new DateTime();
@@ -79,7 +84,6 @@ class PlanningLogic {
             $dateString = $currentDate->format('Y-m-d');
             $dayEvents = $eventsByDay[$dateString] ?? [];
 
-            // On passe $dbOccupied à la fonction
             $slots = $this->calculateSlotsForDay($dateString, $dayEvents, $zoneType, $dbOccupied);
 
             if (!empty($slots)) {
@@ -100,7 +104,6 @@ class PlanningLogic {
         return ['days' => $results];
     }
 
-    // Ajout du paramètre $dbOccupied = []
     private function calculateSlotsForDay($date, $events, $zoneType, $dbOccupied = []) {
         $totalAppointments = 0;
         $occupied = [];
@@ -110,6 +113,11 @@ class PlanningLogic {
         $now = new DateTime('now', $tzBrussels);
         $todayTimestamp = $now->getTimestamp();
         $isToday = ($date === $now->format('Y-m-d'));
+
+        // Conversion des durées en secondes
+        $durationSec = $this->slotDuration * 60;
+        $bufferSec = $this->slotBuffer * 60;
+        $stepSec = $durationSec + $bufferSec; // Ex: 45m + 15m = 60m par boucle
 
         // 1. Ajout des événements Google Agenda
         foreach ($events as $event) {
@@ -132,16 +140,11 @@ class PlanningLogic {
 
                 $occupied[] = [
                     'start' => $dtStart->getTimestamp(),
-                    'end'   => $dtEnd->getTimestamp(),
-                    'end_str' => $dtEnd->format('H:i')
+                    'end'   => $dtEnd->getTimestamp()
                 ];
 
-                $zipCodeFound = null;
                 if (preg_match('/\b(\d{4})\b/', $summary . ' ' . $location, $matches)) {
                     $zipCodeFound = (int)$matches[1];
-                }
-
-                if ($zipCodeFound) {
                     if (($zipCodeFound >= 1000 && $zipCodeFound <= 1210) || ($zipCodeFound >= 1500 && $zipCodeFound <= 1970)) {
                         $isBrusselsDay = true;
                     }
@@ -149,38 +152,30 @@ class PlanningLogic {
             }
         }
 
-        // 2. --- NOUVEAU : Ajout des créneaux réservés temporairement (15 min) ---
+        // 2. Ajout des créneaux réservés temporairement (DB)
         foreach ($dbOccupied as $dbOcc) {
             if (date('Y-m-d', $dbOcc['start']) === $date) {
-                $occupied[] = [
-                    'start' => $dbOcc['start'],
-                    'end'   => $dbOcc['end'],
-                    'end_str' => date('H:i', $dbOcc['end'])
-                ];
-                $totalAppointments++; // On compte ces créneaux dans la limite des 6 / jour
+                $occupied[] = $dbOcc;
+                $totalAppointments++;
             }
         }
-        // ------------------------------------------------------------------------
 
-        if ($totalAppointments >= 6) return [];
+        if ($totalAppointments >= $this->maxDailyAppts) return [];
 
-        if (($zoneType === 'BXL_STD' || $zoneType === 'BXL_RESTRICTED') && !$isBrusselsDay) {
-            return [];
-        }
-        if (($zoneType === 'BW_STD' || $zoneType === 'BW_RESTRICTED') && $isBrusselsDay) {
-            return [];
-        }
+        if (($zoneType === 'BXL_STD' || $zoneType === 'BXL_RESTRICTED') && !$isBrusselsDay) return [];
+        if (($zoneType === 'BW_STD' || $zoneType === 'BW_RESTRICTED') && $isBrusselsDay) return [];
 
         $validSlots = [];
 
-        // CAS 1 : ZONES RESTREINTES (1400... / 1500...)
+        // CAS 1 : ZONES RESTREINTES
         if ($zoneType === 'BW_RESTRICTED' || $zoneType === 'BXL_RESTRICTED') {
             $candidates = ['08:00', '15:30'];
             foreach ($candidates as $timeStr) {
                 $slotStart = strtotime("$date $timeStr");
-                $slotEnd   = $slotStart + (45 * 60);
+                $slotEnd   = $slotStart + $durationSec;
 
-                if (!$this->isOverlap($slotStart, $slotEnd, $occupied)) {
+                // Vérification du chevauchement avec prise en compte du battement
+                if (!$this->isOverlap($slotStart, $slotEnd, $occupied, $bufferSec)) {
                     if ($isToday && $slotStart <= ($todayTimestamp + 600)) continue;
                     $validSlots[] = $timeStr;
                 }
@@ -188,86 +183,64 @@ class PlanningLogic {
             return $validSlots;
         }
 
-        // CAS 2 : ZONES STANDARDS (BW Centre & BXL Centre)
-        // DÉTECTION DU POINT DE DÉPART INTELLIGENT
-
-        // Par défaut, on commence à 08:00
+        // CAS 2 : ZONES STANDARDS (Génération Intelligente)
         $startSimulation = strtotime("$date 08:00:00");
         $endOfDay = strtotime("$date 15:45:00");
 
-        // Mais s'il y a déjà des RDV (ex: un rdv à 07h45 qui finit à 08h30),
-        // on veut pouvoir se caler juste après.
         // On trie les occupations par heure de fin
-        usort($occupied, function($a, $b) {
-            return $a['end'] <=> $b['end'];
-        });
+        usort($occupied, function($a, $b) { return $a['end'] <=> $b['end']; });
 
-        // On crée une liste de points de départ possibles :
-        // 1. Le début de journée standard (08:00)
-        // 2. La fin de chaque rendez-vous existant (pour coller le suivant)
         $potentialStarts = [$startSimulation];
         foreach($occupied as $occ) {
-            // Si le rdv finit avant la fin de journée, c'est un point de départ potentiel
             if ($occ['end'] <= $endOfDay) {
-                $potentialStarts[] = $occ['end'];
+                // Point de départ potentiel = Fin de l'occupation + 15 min de battement
+                $potentialStarts[] = $occ['end'] + $bufferSec;
             }
         }
 
-        // On élimine les doublons et on trie
         $potentialStarts = array_unique($potentialStarts);
         sort($potentialStarts);
 
-        // Pour chaque point de départ potentiel, on lance une simulation de grille
-        // par pas de 45 min jusqu'à la fin de la journée.
         foreach ($potentialStarts as $pStart) {
-            // On s'assure qu'on ne commence pas avant 08:00 (sauf si c'est pour coller un rdv existant ?)
-            // Ici, si un RDV finit à 08h30, on accepte de commencer à 08h30.
-            // Si le point de départ est < 08h00 (ex: un rdv finissant à 7h30), on le remonte à 8h00.
             if ($pStart < $startSimulation) $pStart = $startSimulation;
 
-            // Boucle de génération à partir de ce point
-            for ($pointer = $pStart; $pointer <= $endOfDay; $pointer += (45 * 60)) {
-                $slotStart = $pointer;
-                $slotEnd   = $pointer + (45 * 60);
+            // Arrondi propre au quart d'heure (ex: 08:03 devient 08:15) pour garder des horaires lisibles
+            $pStart = ceil($pStart / 900) * 900;
 
-                // Vérification chevauchement
-                if (!$this->isOverlap($slotStart, $slotEnd, $occupied)) {
-                    // Vérif heure passée
+            // Génération par pas d'1 heure (45m + 15m)
+            for ($pointer = $pStart; $pointer <= $endOfDay; $pointer += $stepSec) {
+                $slotStart = $pointer;
+                $slotEnd   = $pointer + $durationSec;
+
+                if (!$this->isOverlap($slotStart, $slotEnd, $occupied, $bufferSec)) {
                     if ($isToday && $slotStart <= ($todayTimestamp + 600)) continue;
 
-                    // On formate l'heure
                     $slotTime = date('H:i', $slotStart);
-
-                    // On évite les doublons dans la liste finale
                     if (!in_array($slotTime, $validSlots)) {
                         $validSlots[] = $slotTime;
                     }
-                } else {
-                    // Si on touche un obstacle (un autre rdv), cette série s'arrête là pour ce "fil".
-                    // On laisse la boucle externe trouver le prochain point de départ (la fin de l'obstacle).
                 }
             }
         }
 
-        // Tri final des créneaux
         sort($validSlots);
 
         // SPÉCIFICITÉ BXL CENTRE : CONSÉCUTIF OBLIGATOIRE
         if ($zoneType === 'BXL_STD') {
             if ($totalAppointments === 0) {
-                // S'il n'y a personne, on force 08:00
                 if (!in_array('08:00', $validSlots)) return [];
                 return ['08:00'];
             } else {
-                // On cherche le créneau collé au dernier RDV
                 $lastEndTime = 0;
                 foreach ($occupied as $occ) {
                     if ($occ['end'] > $lastEndTime) $lastEndTime = $occ['end'];
                 }
 
-                $targetSlot = date('H:i', $lastEndTime);
+                // On cible le créneau exact après le dernier RDV + les 15 minutes de trajet
+                $targetSlotStart = $lastEndTime + $bufferSec;
+                $targetSlotStart = ceil($targetSlotStart / 900) * 900; // Arrondi au quart d'heure
+                $targetSlot = date('H:i', $targetSlotStart);
 
-                // Si le créneau collé existe dans nos dispos calculées, on le renvoie
                 if (in_array($targetSlot, $validSlots)) {
                     return [$targetSlot];
                 } else {
@@ -279,9 +252,15 @@ class PlanningLogic {
         return $validSlots;
     }
 
-    private function isOverlap($start, $end, $occupied) {
+    /**
+     * Vérifie si un créneau généré chevauche un événement existant
+     * en prenant en compte le battement de 15 minutes de sécurité.
+     */
+    private function isOverlap($start, $end, $occupied, $buffer = 0) {
         foreach ($occupied as $occ) {
-            if ($start < $occ['end'] && $end > $occ['start']) {
+            // Un créneau est invalide s'il commence avant que l'occupation + trajet ne soit fini
+            // ET qu'il se termine après le début de l'occupation - trajet
+            if ($start < ($occ['end'] + $buffer) && $end > ($occ['start'] - $buffer)) {
                 return true;
             }
         }
@@ -321,7 +300,8 @@ class PlanningLogic {
 
     public function addEvent($data) {
         $startDateTime = $data['date'] . 'T' . $data['time'] . ':00';
-        $endDateTime = date('c', strtotime($startDateTime . ' +45 minutes'));
+        // On utilise la variable de durée dynamiquement
+        $endDateTime = date('c', strtotime($startDateTime . ' +' . $this->slotDuration . ' minutes'));
         $startDateTime = date('c', strtotime($startDateTime));
 
         $event = new Google_Service_Calendar_Event([
@@ -335,17 +315,16 @@ class PlanningLogic {
     }
 
     // ==============================================================================
-    // NOUVELLES MÉTHODES POUR LA GESTION (ANNULATION ET REPROGRAMMATION)
+    // MÉTHODES POUR LA GESTION (ANNULATION ET REPROGRAMMATION)
     // ==============================================================================
 
-    // Cherche un événement par date, heure et nom du client
     public function findEventId($date, $time, $clientName) {
         $startDateTime = $date . 'T' . $time . ':00';
         $tzBrussels = new DateTimeZone('Europe/Brussels');
 
         $optParams = [
-            'timeMin' => date('c', strtotime($startDateTime) - 3600), // 1h avant
-            'timeMax' => date('c', strtotime($startDateTime) + 3600), // 1h après
+            'timeMin' => date('c', strtotime($startDateTime) - 3600),
+            'timeMax' => date('c', strtotime($startDateTime) + 3600),
             'singleEvents' => true,
         ];
 
@@ -357,13 +336,11 @@ class PlanningLogic {
                 $dt = new DateTime($event->start->dateTime);
                 $dt->setTimezone($tzBrussels);
 
-                // Si la date et l'heure correspondent exactement
                 if ($dt->format('Y-m-d H:i') === "$date $time") {
                     $summary = strtolower((string)$event->getSummary());
                     $desc = strtolower((string)$event->getDescription());
                     $nameSearch = strtolower($clientName);
 
-                    // On vérifie que le nom de famille est bien dans l'événement (Sécurité)
                     if (strpos($summary, $nameSearch) !== false || strpos($desc, $nameSearch) !== false) {
                         return $event->getId();
                     }
@@ -375,7 +352,6 @@ class PlanningLogic {
         return null;
     }
 
-    // Supprime un événement par son ID Google
     public function deleteEvent($eventId) {
         try {
             $this->service->events->delete($this->calendarId, $eventId);
