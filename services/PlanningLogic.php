@@ -7,13 +7,11 @@ class PlanningLogic {
     private $calendarId;
     private $pdo;
 
-    // =========================================================
-    // CONFIGURATION DES HORAIRES ET BATTEMENTS (MODIFIABLE ICI)
-    // =========================================================
-    private $slotDuration = 45; // Durée effective de l'intervention (en minutes)
-    private $slotBuffer = 15;   // Temps de trajet / battement obligatoire (en minutes)
-    private $maxDailyAppts = 6; // Nombre maximum de RDV par jour
-    // =========================================================
+    // Horaires fixes dictés par Jean-François (8 créneaux par lundi)
+    private $fixedSlots = [
+        '08:00', '09:00', '10:00', '11:00',
+        '12:30', '13:30', '14:30', '15:30'
+    ];
 
     public function __construct($pdo = null) {
         $client = new Google_Client();
@@ -29,16 +27,17 @@ class PlanningLogic {
         $zoneType = $this->getZoneType($zip);
 
         if ($zoneType === 'FORBIDDEN') {
-            return ['error' => 'Zone non desservie ou sur devis uniquement (CP > 1980).'];
+            return ['error' => 'Zone non desservie en ligne ou sur devis uniquement (CP >= 1980). Veuillez nous contacter par téléphone.'];
         }
 
         $startDate = date('c');
-        $endDate = date('c', strtotime("+$weeks weeks"));
+        // On scanne sur 16 semaines (environ 4 mois) car certaines zones n'ont qu'un lundi par mois
+        $endDate = date('c', strtotime("+16 weeks"));
 
         try {
             $allEvents = $this->fetchGoogleEventsRange($startDate, $endDate);
         } catch (Exception $e) {
-            return ['error' => 'Erreur communication Google Agenda'];
+            return ['error' => 'Erreur de communication avec Google Agenda.'];
         }
 
         $eventsByDay = [];
@@ -49,7 +48,7 @@ class PlanningLogic {
             $eventsByDay[$dayKey][] = $event;
         }
 
-        // --- RÉCUPÉRATION DES CRÉNEAUX BLOQUÉS EN BASE DE DONNÉES ---
+        // --- RÉCUPÉRATION DES CRÉNEAUX BLOQUÉS EN BASE DE DONNÉES (en cours de paiement) ---
         $dbOccupied = [];
         if ($this->pdo) {
             $sql = "SELECT appointment_date 
@@ -66,7 +65,7 @@ class PlanningLogic {
                 $startTs = $dt->getTimestamp();
                 $dbOccupied[] = [
                     'start' => $startTs,
-                    'end'   => $startTs + ($this->slotDuration * 60)
+                    'end'   => $startTs + 3600 // Bloque 1h par intervention
                 ];
             }
         }
@@ -74,197 +73,153 @@ class PlanningLogic {
         $results = [];
         $currentDate = new DateTime();
 
-        if ($currentDate->format('N') == 1 && $currentDate->format('H') >= 16) {
+        // On se place directement sur le prochain Lundi
+        if ($currentDate->format('N') != 1) {
             $currentDate->modify('next monday');
-        } elseif ($currentDate->format('N') != 1) {
-            $currentDate->modify('next monday');
+        } else if ($currentDate->format('H') >= 16) {
+            $currentDate->modify('next monday'); // La journée d'aujourd'hui est finie, on passe au lundi suivant
         }
 
-        for ($i = 0; $i < $weeks; $i++) {
+        // On va vérifier les prochains Lundis (jusqu'à 16 lundis)
+        $mondaysToCheck = 16;
+
+        for ($i = 0; $i < $mondaysToCheck; $i++) {
             $dateString = $currentDate->format('Y-m-d');
-            $dayEvents = $eventsByDay[$dateString] ?? [];
 
-            $slots = $this->calculateSlotsForDay($dateString, $dayEvents, $zoneType, $dbOccupied);
+            // --- LOGIQUE DE RÉPARTITION DES MOIS (Règles de Jean-François) ---
+            // Le "weekOfMonth" va de 1 à 5 selon le jour du mois
+            $dayOfMonth = (int)$currentDate->format('d');
+            $weekOfMonth = ceil($dayOfMonth / 7);
 
-            if (!empty($slots)) {
-                $formatter = new IntlDateFormatter('fr_FR', IntlDateFormatter::FULL, IntlDateFormatter::NONE);
-                $prettyDate = $formatter->format($currentDate);
-                $parts = explode(' ', $prettyDate);
-                $prettyDate = ucfirst($parts[0] . ' ' . $currentDate->format('d') . ' ' . $parts[2]);
+            // 4e Lundi du mois = Bruxelles
+            $isBxlMonday = ($weekOfMonth == 4);
+            // Les autres Lundis (1er, 2e, 3e, et éventuellement 5e) = Brabant Wallon
+            $isBwMonday = !$isBxlMonday;
 
-                $results[] = [
-                    'date_iso' => $dateString,
-                    'date_pretty' => $prettyDate,
-                    'slots' => $slots
-                ];
+            $validDayForZone = false;
+            if (($zoneType === 'BXL_STD' || $zoneType === 'BXL_RESTRICTED') && $isBxlMonday) {
+                $validDayForZone = true;
+            } elseif (($zoneType === 'BW_STD' || $zoneType === 'BW_RESTRICTED') && $isBwMonday) {
+                $validDayForZone = true;
             }
+
+            if ($validDayForZone) {
+                $dayEvents = $eventsByDay[$dateString] ?? [];
+                $slots = $this->calculateSlotsForDay($dateString, $dayEvents, $zoneType, $dbOccupied);
+
+                if (!empty($slots)) {
+                    $formatter = new IntlDateFormatter('fr_FR', IntlDateFormatter::FULL, IntlDateFormatter::NONE);
+                    $prettyDate = $formatter->format($currentDate);
+                    $parts = explode(' ', $prettyDate);
+                    $prettyDate = ucfirst($parts[0] . ' ' . $currentDate->format('d') . ' ' . $parts[2]);
+
+                    $results[] = [
+                        'date_iso' => $dateString,
+                        'date_pretty' => $prettyDate,
+                        'slots' => array_values($slots)
+                    ];
+                }
+            }
+
+            // On saute de 7 jours pour aller au Lundi suivant
             $currentDate->modify('+7 days');
+
+            // On s'arrête si on a trouvé au moins 5 dates disponibles à proposer au client
+            if (count($results) >= 5) {
+                break;
+            }
         }
 
         return ['days' => $results];
     }
 
     private function calculateSlotsForDay($date, $events, $zoneType, $dbOccupied = []) {
-        $totalAppointments = 0;
         $occupied = [];
-        $isBrusselsDay = false;
         $tzBrussels = new DateTimeZone('Europe/Brussels');
 
-        $now = new DateTime('now', $tzBrussels);
-        $todayTimestamp = $now->getTimestamp();
-        $isToday = ($date === $now->format('Y-m-d'));
-
-        // Conversion des durées en secondes
-        $durationSec = $this->slotDuration * 60;
-        $bufferSec = $this->slotBuffer * 60;
-        $stepSec = $durationSec + $bufferSec; // Ex: 45m + 15m = 60m par boucle
-
-        // 1. Ajout des événements Google Agenda
+        // Récupération des occupations Google Agenda
         foreach ($events as $event) {
-            $summary = trim(strtoupper((string)$event->getSummary()));
-            $location = trim(strtoupper((string)$event->getLocation()));
-
-            if ($summary === 'ZONE BXL' || $summary === 'ZONE BRUXELLES') {
-                $isBrusselsDay = true;
-                continue;
-            }
-            if (strpos($summary, 'ANNUL') !== false) continue;
-
             if ($event->start->dateTime) {
-                $totalAppointments++;
-
                 $dtStart = new DateTime($event->start->dateTime);
                 $dtStart->setTimezone($tzBrussels);
                 $dtEnd = new DateTime($event->end->dateTime);
                 $dtEnd->setTimezone($tzBrussels);
-
                 $occupied[] = [
                     'start' => $dtStart->getTimestamp(),
                     'end'   => $dtEnd->getTimestamp()
                 ];
-
-                if (preg_match('/\b(\d{4})\b/', $summary . ' ' . $location, $matches)) {
-                    $zipCodeFound = (int)$matches[1];
-                    if (($zipCodeFound >= 1000 && $zipCodeFound <= 1210) || ($zipCodeFound >= 1500 && $zipCodeFound <= 1970)) {
-                        $isBrusselsDay = true;
-                    }
-                }
             }
         }
 
-        // 2. Ajout des créneaux réservés temporairement (DB)
+        // Récupération des occupations Base de données
         foreach ($dbOccupied as $dbOcc) {
             if (date('Y-m-d', $dbOcc['start']) === $date) {
                 $occupied[] = $dbOcc;
-                $totalAppointments++;
             }
         }
 
-        if ($totalAppointments >= $this->maxDailyAppts) return [];
+        $availableSlots = [];
+        $nowTimestamp = time();
 
-        if (($zoneType === 'BXL_STD' || $zoneType === 'BXL_RESTRICTED') && !$isBrusselsDay) return [];
-        if (($zoneType === 'BW_STD' || $zoneType === 'BW_RESTRICTED') && $isBrusselsDay) return [];
+        // On vérifie chacun des 8 horaires fixes pour voir s'il est libre
+        foreach ($this->fixedSlots as $slotTime) {
+            $slotStartTs = strtotime("$date $slotTime");
+            $slotEndTs = $slotStartTs + 3600; // Bloque le créneau complet (1h)
 
-        $validSlots = [];
+            if ($slotStartTs < $nowTimestamp) {
+                continue; // Le créneau est déjà passé
+            }
 
-        // CAS 1 : ZONES RESTREINTES
+            $isOccupied = false;
+            foreach ($occupied as $occ) {
+                // S'il y a un chevauchement avec un événement existant
+                if ($slotStartTs < $occ['end'] && $slotEndTs > $occ['start']) {
+                    $isOccupied = true;
+                    break;
+                }
+            }
+
+            if (!$isOccupied) {
+                $availableSlots[] = $slotTime;
+            }
+        }
+
+        // ==============================================================
+        // SÉCURITÉ TÉLÉPHONE : Toujours garder 2 places libres par lundi
+        // S'il reste 2 créneaux ou moins (sur les 8 initiaux), on bloque.
+        // ==============================================================
+        if (count($availableSlots) <= 2) {
+            return [];
+        }
+
+        // --- APPLICATION DES RÈGLES EXCEL DE JEAN-FRANÇOIS ---
+        $finalSlots = [];
+
+        // Zones extrêmes (1400-1499 & 1500-1970) : Uniquement 08:00 ou 15:30
         if ($zoneType === 'BW_RESTRICTED' || $zoneType === 'BXL_RESTRICTED') {
-            $candidates = ['08:00', '15:30'];
-            foreach ($candidates as $timeStr) {
-                $slotStart = strtotime("$date $timeStr");
-                $slotEnd   = $slotStart + $durationSec;
-
-                // Vérification du chevauchement avec prise en compte du battement
-                if (!$this->isOverlap($slotStart, $slotEnd, $occupied, $bufferSec)) {
-                    if ($isToday && $slotStart <= ($todayTimestamp + 600)) continue;
-                    $validSlots[] = $timeStr;
+            foreach (['08:00', '15:30'] as $cand) {
+                if (in_array($cand, $availableSlots)) {
+                    $finalSlots[] = $cand;
                 }
             }
-            return $validSlots;
+            return $finalSlots;
         }
 
-        // CAS 2 : ZONES STANDARDS (Génération Intelligente)
-        $startSimulation = strtotime("$date 08:00:00");
-        $endOfDay = strtotime("$date 15:45:00");
-
-        // On trie les occupations par heure de fin
-        usort($occupied, function($a, $b) { return $a['end'] <=> $b['end']; });
-
-        $potentialStarts = [$startSimulation];
-        foreach($occupied as $occ) {
-            if ($occ['end'] <= $endOfDay) {
-                // Point de départ potentiel = Fin de l'occupation + 15 min de battement
-                $potentialStarts[] = $occ['end'] + $bufferSec;
-            }
+        // Zone Brabant Wallon Normale (1300-1390) : Choix libre sur tout ce qui reste
+        if ($zoneType === 'BW_STD') {
+            return $availableSlots;
         }
 
-        $potentialStarts = array_unique($potentialStarts);
-        sort($potentialStarts);
-
-        foreach ($potentialStarts as $pStart) {
-            if ($pStart < $startSimulation) $pStart = $startSimulation;
-
-            // Arrondi propre au quart d'heure (ex: 08:03 devient 08:15) pour garder des horaires lisibles
-            $pStart = ceil($pStart / 900) * 900;
-
-            // Génération par pas d'1 heure (45m + 15m)
-            for ($pointer = $pStart; $pointer <= $endOfDay; $pointer += $stepSec) {
-                $slotStart = $pointer;
-                $slotEnd   = $pointer + $durationSec;
-
-                if (!$this->isOverlap($slotStart, $slotEnd, $occupied, $bufferSec)) {
-                    if ($isToday && $slotStart <= ($todayTimestamp + 600)) continue;
-
-                    $slotTime = date('H:i', $slotStart);
-                    if (!in_array($slotTime, $validSlots)) {
-                        $validSlots[] = $slotTime;
-                    }
-                }
-            }
-        }
-
-        sort($validSlots);
-
-        // SPÉCIFICITÉ BXL CENTRE : CONSÉCUTIF OBLIGATOIRE
+        // Zone Bruxelles Normale (1000-1210) : RDV obligatoirement consécutifs
         if ($zoneType === 'BXL_STD') {
-            if ($totalAppointments === 0) {
-                if (!in_array('08:00', $validSlots)) return [];
-                return ['08:00'];
-            } else {
-                $lastEndTime = 0;
-                foreach ($occupied as $occ) {
-                    if ($occ['end'] > $lastEndTime) $lastEndTime = $occ['end'];
-                }
-
-                // On cible le créneau exact après le dernier RDV + les 15 minutes de trajet
-                $targetSlotStart = $lastEndTime + $bufferSec;
-                $targetSlotStart = ceil($targetSlotStart / 900) * 900; // Arrondi au quart d'heure
-                $targetSlot = date('H:i', $targetSlotStart);
-
-                if (in_array($targetSlot, $validSlots)) {
-                    return [$targetSlot];
-                } else {
-                    return [];
-                }
+            if (!empty($availableSlots)) {
+                // On renvoie un tableau contenant UNIQUEMENT la première heure libre trouvée.
+                // Le client n'a pas le choix de l'heure, ce qui garantit que les RDV se collent.
+                return [$availableSlots[0]];
             }
         }
 
-        return $validSlots;
-    }
-
-    /**
-     * Vérifie si un créneau généré chevauche un événement existant
-     * en prenant en compte le battement de 15 minutes de sécurité.
-     */
-    private function isOverlap($start, $end, $occupied, $buffer = 0) {
-        foreach ($occupied as $occ) {
-            // Un créneau est invalide s'il commence avant que l'occupation + trajet ne soit fini
-            // ET qu'il se termine après le début de l'occupation - trajet
-            if ($start < ($occ['end'] + $buffer) && $end > ($occ['start'] - $buffer)) {
-                return true;
-            }
-        }
-        return false;
+        return [];
     }
 
     public function getAvailableSlots($date, $zip) {
@@ -300,8 +255,8 @@ class PlanningLogic {
 
     public function addEvent($data) {
         $startDateTime = $data['date'] . 'T' . $data['time'] . ':00';
-        // On utilise la variable de durée dynamiquement
-        $endDateTime = date('c', strtotime($startDateTime . ' +' . $this->slotDuration . ' minutes'));
+        // Le créneau bloque désormais 1h complète dans l'agenda de Jean-François (45m entretien + 15m route)
+        $endDateTime = date('c', strtotime($startDateTime . ' +1 hour'));
         $startDateTime = date('c', strtotime($startDateTime));
 
         $event = new Google_Service_Calendar_Event([

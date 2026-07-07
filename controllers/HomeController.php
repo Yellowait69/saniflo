@@ -195,19 +195,16 @@ class HomeController {
 
                         // On récupère le prix HTVA envoyé par le JavaScript
                         $priceHtvaFromJS = (float)($_POST['total_price_htva'] ?? 0);
+
+                        // Le JS envoie déjà le prix de base HTVA exact, on le garde tel quel !
                         $truePriceHtva = $priceHtvaFromJS;
                         $fraisAdmin = 0;
-
-                        if ($paymentMethod === 'after') {
-                            // On retrouve le VRAI prix de base HTVA en retirant les 3% ajoutés par le JS
-                            $truePriceHtva = $priceHtvaFromJS / 1.03;
-                        }
 
                         // On fait les calculs sur le VRAI prix de base HTVA
                         $montantTVA = $truePriceHtva * $tauxTVA;
                         $sousTotalTTC = $truePriceHtva + $montantTVA;
 
-                        // On applique les frais de 3% à la toute fin sur le TTC
+                        // On applique les frais de 3% à la toute fin sur le TTC si paiement "after"
                         if ($paymentMethod === 'after') {
                             $fraisAdmin = $sousTotalTTC * 0.03;
                         }
@@ -292,8 +289,51 @@ class HomeController {
 
                         } else {
                             // === PAIEMENT SUR PLACE / APRÈS INTERVENTION ===
-                            $googleDesc = "Client: $prenom $nom\nTél: $telephone\nAdresse: $fullAddress\nAppareil: $device_model\nPaiement: APRÈS INTERVENTION (" . number_format($priceTTC, 2) . "€)\nNote: $descUser";
-                            $logic->addEvent(['summary' => "En Ligne: $nom $prenom - $serviceLabel", 'location' => $fullAddress, 'description' => $googleDesc, 'date' => $dateRdv, 'time' => $heureRdv]);
+
+                            // 1. Définition de l'adresse du chantier pour le GPS
+                            $chantierStr = $worksite_same ? "Identique à la facturation" : "$worksite_street " . ($worksite_box ? "Bte $worksite_box" : "") . ", $worksite_zip $worksite_city";
+                            $gpsLocation = $worksite_same ? $fullAddress : $chantierStr;
+
+                            // 2. Info Société
+                            $companyStr = $is_company ? "🏢 Société: " . ($_POST['company_name'] ?? 'N/A') . " (TVA: " . ($_POST['vat_number'] ?? 'N/A') . ")\n" : "";
+
+                            // 3. Construction hyper détaillée de la description
+                            $googleDesc = "🛠️ DÉTAILS DE L'INTERVENTION\n";
+                            $googleDesc .= "------------------------------------------------\n";
+                            $googleDesc .= "Service : $serviceLabel\n";
+                            $googleDesc .= "Appareil : $device_model" . ($device_year ? " (Année: $device_year)" : "") . ($device_kw ? " - $device_kw kW" : "") . "\n";
+                            $googleDesc .= "Remarques client : " . ($descUser ?: "Aucune remarque") . "\n\n";
+
+                            $googleDesc .= "👤 COORDONNÉES CLIENT\n";
+                            $googleDesc .= "------------------------------------------------\n";
+                            $googleDesc .= "Nom : $prenom $nom\n";
+                            $googleDesc .= $companyStr;
+                            $googleDesc .= "Email : $emailClient\n";
+                            $googleDesc .= "Téléphone : $telephone\n";
+                            $googleDesc .= "Facturation : $fullAddress\n";
+                            if (!$worksite_same) {
+                                $googleDesc .= "Chantier : $chantierStr\n";
+                            }
+                            $googleDesc .= "\n";
+
+                            $googleDesc .= "💳 PAIEMENT ET TARIFICATION\n";
+                            $googleDesc .= "------------------------------------------------\n";
+                            $googleDesc .= "Statut : ⚠️ À RÉGLER SUR PLACE (Bancontact / Cash)\n";
+                            $googleDesc .= "Prix HTVA : " . number_format($truePriceHtva, 2, ',', ' ') . " €\n";
+                            $googleDesc .= "TVA ($vat_regime%) : " . number_format($montantTVA, 2, ',', ' ') . " €\n";
+                            if ($fraisAdmin > 0) {
+                                $googleDesc .= "Frais admin (3%) : " . number_format($fraisAdmin, 2, ',', ' ') . " €\n";
+                            }
+                            $googleDesc .= "TOTAL À PAYER : " . number_format($priceTTC, 2, ',', ' ') . " €\n";
+
+                            // 4. Envoi à l'agenda Google
+                            $logic->addEvent([
+                                'summary' => "🔧 $serviceLabel - $nom $prenom",
+                                'location' => $gpsLocation, // On envoie l'adresse exacte du chantier pour le GPS
+                                'description' => $googleDesc,
+                                'date' => $dateRdv,
+                                'time' => $heureRdv
+                            ]);
 
                             // Envoi du mail hyper détaillé + copie Info
                             $this->sendReservationEmail($emailData);
@@ -533,18 +573,47 @@ class HomeController {
                     if (isset($slotsCheck['error']) || !in_array($newTime, $slotsCheck['slots'])) {
                         $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px;">Ce créneau n\'est plus disponible. Veuillez en choisir un autre.</div>';
                     } else {
+                        // On supprime l'ancien event Google
                         $eventId = $logic->findEventId($dateOnly, $timeOnly, $clientName);
                         if ($eventId) {
                             $logic->deleteEvent($eventId);
                         }
 
+                        // --- RECONSTRUCTION DÉTAILLÉE DE L'ÉVÉNEMENT POUR LA NOUVELLE DATE ---
                         $bte = !empty($rdv['billing_box']) ? "Bte " . $rdv['billing_box'] : "";
                         $fullAddress = "{$rdv['billing_street']} $bte, {$rdv['billing_zip']} {$rdv['billing_city']}";
-                        $googleDesc = "Client: {$rdv['firstname']} {$rdv['lastname']}\nTél: {$rdv['phone']}\nAdresse: {$fullAddress}\nAppareil: {$rdv['device_model']}\nPaiement: {$rdv['payment_method']} (RDV MODIFIÉ EN LIGNE)";
 
+                        $chantierSame = $rdv['worksite_same_as_billing'];
+                        $chantierStr = $chantierSame ? "Identique" : "{$rdv['worksite_street']} {$rdv['worksite_box']}, {$rdv['worksite_zip']} {$rdv['worksite_city']}";
+                        $companyStr = $rdv['is_company'] ? "🏢 Société: {$rdv['company_name']} (TVA: {$rdv['vat_number']})\n" : "";
+
+                        $googleDesc = "🔄 INTERVENTION MODIFIÉE EN LIGNE\n\n";
+
+                        $googleDesc .= "🛠️ DÉTAILS DE L'INTERVENTION\n";
+                        $googleDesc .= "------------------------------------------------\n";
+                        $googleDesc .= "Appareil : {$rdv['device_model']} (Année: {$rdv['device_year']} - {$rdv['device_kw']}kW)\n";
+                        $googleDesc .= "Remarques : " . ($rdv['description'] ?: "Aucune") . "\n\n";
+
+                        $googleDesc .= "👤 COORDONNÉES CLIENT\n";
+                        $googleDesc .= "------------------------------------------------\n";
+                        $googleDesc .= "Nom : {$rdv['firstname']} {$rdv['lastname']}\n";
+                        $googleDesc .= $companyStr;
+                        $googleDesc .= "Email : {$rdv['email']}\n";
+                        $googleDesc .= "Téléphone : {$rdv['phone']}\n";
+                        $googleDesc .= "Adresse de chantier : " . ($chantierSame ? $fullAddress : $chantierStr) . "\n\n";
+
+                        $googleDesc .= "💳 PAIEMENT\n";
+                        $googleDesc .= "------------------------------------------------\n";
+                        $methodePaiementTexte = ($rdv['payment_method'] === 'stripe') ? "✅ DÉJÀ PAYÉ EN LIGNE" : "⚠️ À RÉGLER SUR PLACE";
+                        $googleDesc .= "Statut : $methodePaiementTexte\n";
+
+                        // Paramétrage de la localisation pour le GPS
+                        $locationEvent = $chantierSame ? $fullAddress : $chantierStr;
+
+                        // Ajout du nouvel event
                         $logic->addEvent([
-                            'summary' => "Modifié En Ligne: {$rdv['lastname']} {$rdv['firstname']}",
-                            'location' => $fullAddress,
+                            'summary' => "🔄 MODIFIÉ: {$rdv['lastname']} {$rdv['firstname']}",
+                            'location' => $locationEvent,
                             'description' => $googleDesc,
                             'date' => $newDate,
                             'time' => $newTime

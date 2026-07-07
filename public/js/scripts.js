@@ -120,7 +120,22 @@ function initWizard(steps) {
             if (isValid) {
                 // Transition vers l'étape de Planification (Étape 3 -> 4)
                 if (currentStep === 2) {
-                    const zipVal = document.getElementById('wizard_zip').value;
+
+                    // --- CORRECTION : GESTION DU CODE POSTAL DE CHANTIER ---
+                    let zipVal = document.getElementById('wizard_zip').value; // CP de facturation par défaut
+                    const worksiteSameCheckbox = document.getElementById('worksite_same') || document.querySelector('input[name="worksite_same"]');
+                    const worksiteFields = document.getElementById('worksite-fields');
+
+                    // On vérifie si l'adresse de chantier est différente (via checkbox non cochée OU via div visible)
+                    if ((worksiteSameCheckbox && !worksiteSameCheckbox.checked) ||
+                        (worksiteFields && worksiteFields.style.display !== 'none')) {
+                        const worksiteZip = document.getElementById('worksite_zip').value;
+                        if (worksiteZip) {
+                            zipVal = worksiteZip; // On utilise en priorité le code postal du CHANTIER
+                        }
+                    }
+                    // -------------------------------------------------------
+
                     if (!zipVal) {
                         alert("Veuillez entrer un code postal valide.");
                         return;
@@ -130,7 +145,7 @@ function initWizard(steps) {
                     const displayZip = document.getElementById('display-zip');
                     if (displayZip) displayZip.innerText = zipVal;
 
-                    // Lancement de la recherche API des dates
+                    // Lancement de la recherche API des dates avec le bon CP
                     fetchNextDates(zipVal);
                 }
 
