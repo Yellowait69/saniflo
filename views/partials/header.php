@@ -124,7 +124,8 @@
         <a href="index.php"><img src="img/logo-saniflo.png" alt="Saniflo SRL Logo"></a>
     </div>
     <ul class="nav-links">
-        <li><a href="index.php#accueil">Accueil</a></li>
+        <!-- Modification ici : href="#" pour remonter tout en haut de la page -->
+        <li><a href="#">Accueil</a></li>
         <li><a href="index.php#apropos">À Propos</a></li>
         <li><a href="index.php#services">Services</a></li>
         <li><a href="index.php#realisations">Réalisations</a></li>

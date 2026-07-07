@@ -406,7 +406,158 @@ class HomeController {
         echo "Tâche Cron exécutée : $count rappel(s) envoyé(s).";
     }
 
-    // (La méthode modifier_rdv() reste identique à votre version optimisée, je ne la remets pas en entier pour économiser de la place, mais elle ne change pas).
-    public function modifier_rdv() { /* Code existant de la modification */ }
+    // =================================================================
+    // GESTION DES MODIFICATIONS / ANNULATIONS DE RENDEZ-VOUS
+    // =================================================================
+    public function modifier_rdv() {
+        if (session_status() === PHP_SESSION_NONE) { session_start(); }
+        $message_status = '';
+        $token = $_GET['token'] ?? '';
+
+        if (empty($token)) {
+            header("Location: index.php");
+            exit;
+        }
+
+        // 1. Récupération du rendez-vous en base de données
+        $stmt = $this->pdo->prepare("SELECT * FROM quote_requests WHERE edit_token = ?");
+        $stmt->execute([$token]);
+        $rdv = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$rdv) {
+            $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px;">Lien invalide ou expiré.</div>';
+            require __DIR__ . '/../views/modifier_rdv.php';
+            return;
+        }
+
+        // 2. Vérification de la règle des 7 jours (Délais de modification)
+        $now = time();
+        $rdvTime = strtotime($rdv['appointment_date']);
+        // 7 jours = 7 * 24 heures * 60 minutes * 60 secondes
+        $peutModifier = (($rdvTime - $now) >= (7 * 24 * 60 * 60));
+
+        // 3. Traitement du formulaire (POST)
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $peutModifier && $rdv['status'] !== 'annulé') {
+            $action = $_POST['action'] ?? '';
+            $logic = new PlanningLogic($this->pdo);
+
+            $dateOnly = date('Y-m-d', $rdvTime);
+            $timeOnly = date('H:i', $rdvTime);
+            $clientName = $rdv['lastname'];
+
+            // =========================
+            // ACTION : ANNULATION
+            // =========================
+            if ($action === 'cancel') {
+                // Suppression Agenda
+                $eventId = $logic->findEventId($dateOnly, $timeOnly, $clientName);
+                if ($eventId) {
+                    $logic->deleteEvent($eventId);
+                }
+
+                // Mise à jour de la BDD
+                $stmt = $this->pdo->prepare("UPDATE quote_requests SET status = 'annulé' WHERE id = ?");
+                $stmt->execute([$rdv['id']]);
+                $rdv['status'] = 'annulé';
+
+                $message_status = '<div class="alert success" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px;">Votre rendez-vous a été annulé avec succès.</div>';
+
+                // Email de notification
+                $this->sendNotificationEmail($rdv, 'Annulation');
+
+                // =========================
+                // ACTION : DÉPLACEMENT (REPORT)
+                // =========================
+            } elseif ($action === 'reschedule') {
+                $newDate = $_POST['new_date'] ?? '';
+                $newTime = $_POST['new_time'] ?? '';
+
+                if (!empty($newDate) && !empty($newTime)) {
+                    $zip = $rdv['worksite_zip'] ?: $rdv['billing_zip']; // Priorité à l'adresse du chantier
+
+                    // Vérification que le nouveau créneau n'a pas été pris entre-temps
+                    $slotsCheck = $logic->getAvailableSlots($newDate, $zip);
+
+                    if (isset($slotsCheck['error']) || !in_array($newTime, $slotsCheck['slots'])) {
+                        $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px;">Ce créneau n\'est plus disponible. Veuillez en choisir un autre.</div>';
+                    } else {
+                        // 1. Suppression de l'ancien événement Google Agenda
+                        $eventId = $logic->findEventId($dateOnly, $timeOnly, $clientName);
+                        if ($eventId) {
+                            $logic->deleteEvent($eventId);
+                        }
+
+                        // 2. Création du nouvel événement Google Agenda
+                        $bte = !empty($rdv['billing_box']) ? "Bte " . $rdv['billing_box'] : "";
+                        $fullAddress = "{$rdv['billing_street']} $bte, {$rdv['billing_zip']} {$rdv['billing_city']}";
+                        $googleDesc = "Client: {$rdv['firstname']} {$rdv['lastname']}\nTél: {$rdv['phone']}\nAdresse: {$fullAddress}\nAppareil: {$rdv['device_model']}\nPaiement: {$rdv['payment_method']} (RDV MODIFIÉ EN LIGNE)";
+
+                        $logic->addEvent([
+                            'summary' => "Modifié En Ligne: {$rdv['lastname']} {$rdv['firstname']}",
+                            'location' => $fullAddress,
+                            'description' => $googleDesc,
+                            'date' => $newDate,
+                            'time' => $newTime
+                        ]);
+
+                        // 3. Mise à jour en Base de Données
+                        $newDateTime = $newDate . ' ' . $newTime . ':00';
+                        $stmt = $this->pdo->prepare("UPDATE quote_requests SET appointment_date = ? WHERE id = ?");
+                        $stmt->execute([$newDateTime, $rdv['id']]);
+
+                        // Mise à jour de la variable pour l'affichage de la vue
+                        $rdv['appointment_date'] = $newDateTime;
+
+                        $message_status = '<div class="alert success" style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px; margin-bottom:20px;">Votre rendez-vous a été déplacé avec succès au ' . date('d/m/Y', strtotime($newDate)) . ' à ' . $newTime . '.</div>';
+
+                        // 4. Email de notification
+                        $this->sendNotificationEmail($rdv, 'Modification', $newDate, $newTime);
+                    }
+                }
+            }
+        }
+
+        // Affichage de la vue
+        require __DIR__ . '/../views/modifier_rdv.php';
+    }
+
+    // =================================================================
+    // HELPER : ENVOI EMAIL SUITE À UNE MODIFICATION OU ANNULATION
+    // =================================================================
+    private function sendNotificationEmail($rdv, $type, $newDate = null, $newTime = null) {
+        $to = $rdv['email'];
+        $subject = ($type === 'Annulation') ? "Annulation de votre rendez-vous - Saniflo SRL" : "Modification de votre rendez-vous - Saniflo SRL";
+
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+        $host = $_SERVER['HTTP_HOST'];
+        $logoUrl = "$protocol://$host/img/logo-saniflo.png";
+
+        if ($type === 'Annulation') {
+            $content = "<p>Nous vous confirmons l'annulation de votre intervention initialement prévue le <strong>" . date('d/m/Y', strtotime($rdv['appointment_date'])) . "</strong>.</p>";
+        } else {
+            $content = "<p>Votre intervention a bien été reprogrammée. Le technicien se présentera le <strong>" . date('d/m/Y', strtotime($newDate)) . " à $newTime</strong>.</p>";
+        }
+
+        $body = "
+        <html>
+        <body style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; background-color: #f9f9f9; padding: 20px;'>
+            <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #ddd; padding: 30px; border-radius: 12px;'>
+                <div style='text-align: center; margin-bottom: 20px;'><img src='$logoUrl' style='max-width: 150px;'></div>
+                <h2 style='color: #004a99;'>Bonjour {$rdv['firstname']},</h2>
+                $content
+                <p style='margin-top:20px; font-size: 0.9rem; color:#666;'>Pour toute question ou urgence, n'hésitez pas à nous contacter au <strong>0495 50 17 17</strong>.</p>
+                <p>L'équipe Saniflo SRL</p>
+            </div>
+        </body>
+        </html>";
+
+        $headers = "MIME-Version: 1.0\r\n";
+        $headers .= "Content-type:text/html;charset=UTF-8\r\n";
+        $headers .= "From: Saniflo SRL <info@saniflo.be>\r\n";
+        // L'admin reçoit automatiquement une copie de la modification ou annulation !
+        $headers .= "Bcc: info@saniflo.be\r\n";
+
+        mail($to, $subject, $body, $headers);
+    }
 }
 ?>

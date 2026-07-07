@@ -1,11 +1,20 @@
 <?php
 require_once 'auth.php';
 $pdo = require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../services/PlanningLogic.php'; // IMPORT DE LA SYNCHRONISATION AGENDA
 
 $id = $_GET['id'] ?? null;
 if (!$id) { header("Location: quotes.php"); exit; }
 
 $msg = '';
+$logic = new PlanningLogic($pdo); // Initialisation du service Agenda
+
+// --- FETCH INITIAL (Pour comparer l'ancienne date avec la nouvelle) ---
+$stmt = $pdo->prepare("SELECT * FROM quote_requests WHERE id = ?");
+$stmt->execute([$id]);
+$quoteActuel = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$quoteActuel) die("Dossier introuvable");
 
 // --- UPDATE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -16,6 +25,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // =================================================
 
+    // Concaténation date + heure
+    $fullDate = $_POST['date'] . ' ' . $_POST['time'] . ':00';
+    $newStatus = $_POST['status'];
+
+    // ==========================================================
+    // LOGIQUE DE SYNCHRONISATION GOOGLE AGENDA
+    // ==========================================================
+
+    // 1. Si la DATE ou l'HEURE a été modifiée
+    if ($fullDate !== $quoteActuel['appointment_date']) {
+        // A. Supprimer l'ancien créneau
+        $oldDateOnly = date('Y-m-d', strtotime($quoteActuel['appointment_date']));
+        $oldTimeOnly = date('H:i', strtotime($quoteActuel['appointment_date']));
+        $eventId = $logic->findEventId($oldDateOnly, $oldTimeOnly, $quoteActuel['lastname']);
+        if ($eventId) { $logic->deleteEvent($eventId); }
+
+        // B. Créer le nouveau créneau (sauf si on est en train d'annuler)
+        if ($newStatus !== 'annulé') {
+            $fullAddress = "{$_POST['billing_street']}, {$_POST['zip']} {$_POST['billing_city']}";
+            $logic->addEvent([
+                'summary' => "Déplacé (Admin): {$_POST['lastname']} {$_POST['firstname']}",
+                'location' => $fullAddress,
+                'description' => "Modifié par l'administrateur. Appareil: {$_POST['device_model']}",
+                'date' => $_POST['date'],
+                'time' => $_POST['time']
+            ]);
+        }
+    }
+    // 2. Si le statut passe à ANNULÉ (sans changer la date)
+    elseif ($newStatus === 'annulé' && $quoteActuel['status'] !== 'annulé') {
+        $dateOnly = date('Y-m-d', strtotime($quoteActuel['appointment_date']));
+        $timeOnly = date('H:i', strtotime($quoteActuel['appointment_date']));
+        $eventId = $logic->findEventId($dateOnly, $timeOnly, $quoteActuel['lastname']);
+        if ($eventId) { $logic->deleteEvent($eventId); }
+    }
+    // ==========================================================
+
+    // Requête de mise à jour BDD
     $sql = "UPDATE quote_requests SET 
         firstname=?, lastname=?, email=?, phone=?,
         billing_street=?, billing_city=?, zip=?,
@@ -23,26 +70,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         appointment_date=?, total_price_htva=?, status=?, description=?
         WHERE id=?";
 
-    // Concaténation date + heure si modifiées séparément
-    $fullDate = $_POST['date'] . ' ' . $_POST['time'];
-
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
         $_POST['firstname'], $_POST['lastname'], $_POST['email'], $_POST['phone'],
         $_POST['billing_street'], $_POST['billing_city'], $_POST['zip'],
         $_POST['device_brand'], $_POST['device_model'], $_POST['device_serial'],
-        $fullDate, $_POST['total_price_htva'], $_POST['status'], $_POST['description'],
+        $fullDate, $_POST['total_price_htva'], $newStatus, $_POST['description'],
         $id
     ]);
-    $msg = "Dossier mis à jour avec succès.";
+
+    $msg = "Dossier mis à jour avec succès et synchronisé avec l'Agenda.";
+
+    // Recharger les données fraîchement enregistrées
+    $stmt = $pdo->prepare("SELECT * FROM quote_requests WHERE id = ?");
+    $stmt->execute([$id]);
+    $quoteActuel = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-// --- FETCH ---
-$stmt = $pdo->prepare("SELECT * FROM quote_requests WHERE id = ?");
-$stmt->execute([$id]);
-$quote = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$quote) die("Dossier introuvable");
+// On assigne pour l'affichage
+$quote = $quoteActuel;
 
 // Séparation date/heure pour l'affichage (Gestion sécurisée)
 $dateVal = '';
@@ -71,7 +117,7 @@ if (!empty($quote['appointment_date'])) {
 <div class="container">
     <h2><a href="quotes.php"><i class="fas fa-arrow-left"></i></a> Édition Dossier #<?= htmlspecialchars($quote['id'] ?? '') ?></h2>
 
-    <?php if($msg): ?><div style="background:#d4edda; color:#155724; padding:15px; border-radius:5px; margin-bottom:20px;"><?= $msg ?></div><?php endif; ?>
+    <?php if($msg): ?><div style="background:#d4edda; color:#155724; padding:15px; border-radius:5px; margin-bottom:20px;"><i class="fas fa-check-circle"></i> <?= $msg ?></div><?php endif; ?>
 
     <form method="POST" class="crud-form">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['admin_csrf_token'] ?>">
@@ -118,16 +164,16 @@ if (!empty($quote['appointment_date'])) {
             <div>
                 <h3 style="color:var(--primary); border-bottom:2px solid var(--secondary); padding-bottom:10px; margin-bottom:20px;">Technique & RDV</h3>
 
-                <div class="form-group">
-                    <label>Date RDV</label>
+                <div class="form-group" style="background:#e3f2fd; padding:15px; border-radius:8px; border:1px solid #90caf9;">
+                    <label style="color:#0277bd;"><i class="fab fa-google"></i> Date RDV</label>
                     <input type="date" name="date" value="<?= $dateVal ?>">
-                </div>
-                <div class="form-group">
-                    <label>Heure</label>
+
+                    <label style="color:#0277bd; margin-top:10px;"><i class="far fa-clock"></i> Heure</label>
                     <input type="time" name="time" value="<?= $timeVal ?>">
+                    <small style="display:block; margin-top:5px; color:#1565c0;">La modification de la date mettra à jour Google Agenda.</small>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" style="margin-top:15px;">
                     <label>Marque</label>
                     <input type="text" name="device_brand" value="<?= htmlspecialchars($quote['device_brand'] ?? '') ?>">
                 </div>
@@ -164,7 +210,7 @@ if (!empty($quote['appointment_date'])) {
 
         <div style="margin-top:30px; text-align:right;">
             <button type="submit" class="btn-admin" style="width:auto; padding:12px 40px;">
-                <i class="fas fa-save"></i> Sauvegarder les modifications
+                <i class="fas fa-save"></i> Sauvegarder et Synchroniser
             </button>
         </div>
     </form>

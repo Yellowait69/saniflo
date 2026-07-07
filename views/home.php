@@ -26,6 +26,12 @@
 
     <link rel="stylesheet" href="css/style.css">
 
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+
     <script type="application/ld+json">
         {
             "@context": "https://schema.org",

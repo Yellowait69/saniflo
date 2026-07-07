@@ -1,6 +1,6 @@
 /**
  * scripts.js - Version Optimisée Finale
- * Navigation, Formulaires, Logique Wizard (TVA, API, UI) et Correctifs visuels.
+ * Navigation, Formulaires, Logique Wizard (TVA, API, UI), Correctifs visuels et Ancres.
  */
 
 // ==========================================
@@ -8,10 +8,26 @@
 // ==========================================
 document.addEventListener('DOMContentLoaded', function() {
 
-    // 1. CORRECTIF SCROLL : Force la page à s'afficher en haut au chargement
+    // 1. CORRECTIF SCROLL : Gestion intelligente des ancres et du retour en haut
     setTimeout(function() {
-        window.scrollTo(0, 0);
-    }, 15);
+        if (window.location.hash) {
+            // S'il y a une ancre dans l'URL (ex: #devis-wizard), on y va en douceur
+            const targetElement = document.querySelector(window.location.hash);
+            if (targetElement) {
+                // Calcule la position de l'élément avec une marge de 80px pour le menu
+                const elementPosition = targetElement.getBoundingClientRect().top + window.scrollY;
+                const offsetPosition = elementPosition - 80;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: "smooth"
+                });
+            }
+        } else {
+            // S'il n'y a pas d'ancre, on s'assure que la page charge bien tout en haut
+            window.scrollTo(0, 0);
+        }
+    }, 100); // Délai de 100ms pour laisser le DOM et CSS se stabiliser
 
     // 2. NAVIGATION & MENU BURGER
     const navLinks = document.querySelector('.nav-links');

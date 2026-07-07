@@ -8,6 +8,7 @@ $pdo = require_once __DIR__ . '/../config/db.php';
 $tablesConfig = [
     'settings' => [
         'name' => 'Paramètres du Site (Textes, Emails, Images)',
+        'pk' => 'setting_key', // Clé primaire spécifique à cette table
         'can_add' => false,    // On empêche d'ajouter de nouveaux paramètres techniques
         'can_delete' => false, // On empêche de casser le site en supprimant une clé
         'fields' => [
@@ -17,6 +18,7 @@ $tablesConfig = [
     ],
     'services' => [
         'name' => 'Services',
+        'pk' => 'id',
         'can_add' => true, 'can_delete' => true,
         'fields' => [
             'title' => ['label' => 'Titre', 'type' => 'text'],
@@ -27,6 +29,7 @@ $tablesConfig = [
     ],
     'pricing' => [
         'name' => 'Tarifs',
+        'pk' => 'id',
         'can_add' => true, 'can_delete' => true,
         'fields' => [
             'service_type' => ['label' => 'Code Service', 'type' => 'text'],
@@ -36,6 +39,7 @@ $tablesConfig = [
     ],
     'team' => [
         'name' => 'Équipe',
+        'pk' => 'id',
         'can_add' => true, 'can_delete' => true,
         'fields' => [
             'name' => ['label' => 'Nom', 'type' => 'text'],
@@ -51,6 +55,7 @@ $tablesConfig = [
     ],
     'certifications' => [
         'name' => 'Agréments',
+        'pk' => 'id',
         'can_add' => true, 'can_delete' => true,
         'fields' => [
             'region' => ['label' => 'Région', 'type' => 'text'],
@@ -60,6 +65,7 @@ $tablesConfig = [
     ],
     'projects' => [
         'name' => 'Réalisations (Portfolio)',
+        'pk' => 'id',
         'can_add' => true, 'can_delete' => true,
         'fields' => [
             'title' => ['label' => 'Titre du chantier', 'type' => 'text'],
@@ -77,6 +83,7 @@ $tablesConfig = [
     ],
     'users' => [
         'name' => 'Administrateurs',
+        'pk' => 'id',
         'can_add' => true, 'can_delete' => true,
         'fields' => [
             'username' => ['label' => 'Identifiant', 'type' => 'text'],
@@ -91,6 +98,7 @@ if (!array_key_exists($currentTable, $tablesConfig)) {
     die("Table non autorisée.");
 }
 $config = $tablesConfig[$currentTable];
+$pk = $config['pk'] ?? 'id'; // Définition de la clé primaire
 $action = $_GET['action'] ?? 'list';
 $id = $_GET['id'] ?? null;
 $msg = '';
@@ -107,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($_POST['delete_id']) && ($config['can_delete'] ?? true)) {
         // SUPPRESSION
-        $stmt = $pdo->prepare("DELETE FROM $currentTable WHERE id = ?");
+        $stmt = $pdo->prepare("DELETE FROM $currentTable WHERE $pk = ?");
         $stmt->execute([$_POST['delete_id']]);
         $msg = "Élément supprimé avec succès.";
     } else {
@@ -121,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Récupération de l'item existant pour connaître son état actuel
         $existingItem = [];
         if ($id) {
-            $stmt = $pdo->prepare("SELECT * FROM $currentTable WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT * FROM $currentTable WHERE $pk = ?");
             $stmt->execute([$id]);
             $existingItem = $stmt->fetch(PDO::FETCH_ASSOC);
         }
@@ -148,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // DÉTERMINATION DU TYPE RÉEL (Pour le champ dynamique des settings)
             $actualType = $fieldConfig['type'];
             if ($actualType === 'dynamic') {
-                $actualType = $existingItem['type'] ?? 'textarea'; // Lit le type depuis la DB
+                $actualType = $existingItem['setting_type'] ?? 'textarea'; // Lit le type spécifique depuis la DB
             }
 
             // GESTION UPLOAD FICHIER (IMAGES)
@@ -192,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $msg = "Erreur d'écriture sur le serveur.";
                             }
                         } else {
-                            $msg = "Format de fichier non supporté (Uniquement JPG, PNG, WEBP).";
+                            $msg = "Format de fichier non supporté (Uniquement JPG, PNG, WEBP, GIF).";
                         }
                     }
                 } elseif (isset($_FILES[$f]) && $_FILES[$f]['error'] !== UPLOAD_ERR_NO_FILE) {
@@ -215,7 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 if ($id) {
                     $data[] = $id;
-                    $sql = "UPDATE $currentTable SET " . implode(', ', $updateStr) . " WHERE id = ?";
+                    $sql = "UPDATE $currentTable SET " . implode(', ', $updateStr) . " WHERE $pk = ?";
                     $stmt = $pdo->prepare($sql);
                     $stmt->execute($data);
                     $msg = "Modifications enregistrées avec succès.";
@@ -265,7 +273,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if ($action === 'edit' || $action === 'create'):
         $item = [];
         if ($id) {
-            $stmt = $pdo->prepare("SELECT * FROM $currentTable WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT * FROM $currentTable WHERE $pk = ?");
             $stmt->execute([$id]);
             $item = $stmt->fetch(PDO::FETCH_ASSOC);
         }
@@ -283,7 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Détection du type dynamique pour les paramètres
                     $actualType = $fieldConfig['type'];
                     if ($actualType === 'dynamic') {
-                        $actualType = $item['type'] ?? 'textarea'; // Par défaut textarea
+                        $actualType = $item['setting_type'] ?? 'textarea'; // Par défaut textarea
                     }
                     $isReadonly = !empty($fieldConfig['readonly']);
                     ?>
@@ -358,7 +366,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </thead>
                 <tbody>
                 <?php
-                $rows = $pdo->query("SELECT * FROM $currentTable ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
+                // Ordonner par la clé primaire s'il s'agit de settings, ou par id pour les autres
+                $orderBy = $pk;
+                $rows = $pdo->query("SELECT * FROM $currentTable ORDER BY $orderBy ASC")->fetchAll(PDO::FETCH_ASSOC);
                 foreach($rows as $row): ?>
                     <tr>
                         <?php
@@ -368,7 +378,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $val = $row[$k] ?? '';
 
                                 // Détection type réel
-                                $actualType = $v['type'] === 'dynamic' ? ($row['type'] ?? 'text') : $v['type'];
+                                $actualType = $v['type'] === 'dynamic' ? ($row['setting_type'] ?? 'text') : $v['type'];
 
                                 if ($actualType === 'file' && !empty($val)) {
                                     echo "<td><img src='../public/" . htmlspecialchars($val) . "' style='height: 50px; width: auto; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'></td>";
@@ -381,13 +391,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         ?>
                         <td style="text-align:right; white-space:nowrap;">
-                            <a href="?table=<?= htmlspecialchars($currentTable) ?>&action=edit&id=<?= $row['id'] ?>" class="btn-action btn-edit" title="Modifier">
+                            <a href="?table=<?= htmlspecialchars($currentTable) ?>&action=edit&id=<?= urlencode($row[$pk]) ?>" class="btn-action btn-edit" title="Modifier">
                                 <i class="fas fa-edit"></i>
                             </a>
                             <?php if ($config['can_delete'] ?? true): ?>
                                 <form method="POST" style="display:inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet élément de façon permanente ?');">
                                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['admin_csrf_token'] ?>">
-                                    <input type="hidden" name="delete_id" value="<?= $row['id'] ?>">
+                                    <input type="hidden" name="delete_id" value="<?= htmlspecialchars($row[$pk]) ?>">
                                     <button type="submit" class="btn-action btn-delete" title="Supprimer" style="cursor:pointer;">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -404,4 +414,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 </body>
 </html>
-
