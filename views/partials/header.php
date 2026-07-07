@@ -124,7 +124,6 @@
         <a href="index.php"><img src="img/logo-saniflo.png" alt="Saniflo SRL Logo"></a>
     </div>
     <ul class="nav-links">
-        <!-- Modification ici : href="#" pour remonter tout en haut de la page -->
         <li><a href="#">Accueil</a></li>
         <li><a href="index.php#apropos">À Propos</a></li>
         <li><a href="index.php#services">Services</a></li>
@@ -144,9 +143,19 @@
         <div class="hero-text-side">
             <span class="badge hero-badge-date">Depuis 1997</span>
 
-            <h1 class="hero-h1-title">Votre Expert en <br>Chauffage & Sanitaire</h1>
+            <?php
+            // Textes par défaut si la base de données est vide
+            $defaultHeroTitle = "Votre Expert en\nChauffage & Sanitaire";
+            $defaultHeroSubtitle = "Installation, rénovation et dépannage dans tout le Brabant Wallon.\nUne expertise dirigée par Jean-François Dengis et Florence Lambinon.";
+            ?>
 
-            <p>Installation, rénovation et dépannage dans tout le Brabant Wallon. <br>Une expertise dirigée par <strong>Jean-François Dengis</strong> et <strong>Florence Lambinon</strong>.</p>
+            <h1 class="hero-h1-title">
+                <?= nl2br(htmlspecialchars($site_content['hero_title'] ?? $defaultHeroTitle)) ?>
+            </h1>
+
+            <p>
+                <?= nl2br(htmlspecialchars($site_content['hero_subtitle'] ?? $defaultHeroSubtitle)) ?>
+            </p>
 
             <div class="cta-box">
                 <p style="margin-bottom: 20px; font-weight: 600; color: #fff; font-size: 1.1rem;">

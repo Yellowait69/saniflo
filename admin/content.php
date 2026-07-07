@@ -16,6 +16,16 @@ $tablesConfig = [
             'setting_value' => ['label' => 'Contenu (Texte ou Image)', 'type' => 'dynamic', 'folder' => 'img/', 'help' => 'Modifiez le texte ou importez une nouvelle image (Max 2 Mo).']
         ]
     ],
+    'site_content' => [
+        'name' => 'Textes du Site (Accueil)',
+        'pk' => 'id',
+        'can_add' => false,    // On empêche la création pour ne pas casser le template du site
+        'can_delete' => false, // On empêche la suppression
+        'fields' => [
+            'content_key' => ['label' => 'Emplacement (Clé technique)', 'type' => 'text', 'readonly' => true],
+            'content_value' => ['label' => 'Texte à afficher', 'type' => 'textarea', 'help' => 'Modifiez le texte visible sur le site. Les retours à la ligne ("Entrée") sont conservés.']
+        ]
+    ],
     'services' => [
         'name' => 'Services',
         'pk' => 'id',
@@ -366,7 +376,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </thead>
                 <tbody>
                 <?php
-                // Ordonner par la clé primaire s'il s'agit de settings, ou par id pour les autres
+                // Ordonner par la clé primaire s'il s'agit de settings ou de site_content, sinon par id
                 $orderBy = $pk;
                 $rows = $pdo->query("SELECT * FROM $currentTable ORDER BY $orderBy ASC")->fetchAll(PDO::FETCH_ASSOC);
                 foreach($rows as $row): ?>

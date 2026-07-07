@@ -34,6 +34,28 @@ require_once __DIR__ . '/../controllers/HomeController.php';
  */
 $pdo = require_once __DIR__ . '/../config/db.php';
 
+
+/**
+ * =========================================================================
+ * NOUVEAU : TRACKING DES VISITEURS UNIQUES (Pour les stats du Dashboard)
+ * =========================================================================
+ */
+if (!isset($_SESSION['visited_today'])) {
+    try {
+        $today = date('Y-m-d');
+        // Insère une nouvelle ligne pour aujourd'hui, ou incrémente le compteur si elle existe déjà
+        $stmt = $pdo->prepare("INSERT INTO visitors (visit_date, visits_count) VALUES (?, 1) ON DUPLICATE KEY UPDATE visits_count = visits_count + 1");
+        $stmt->execute([$today]);
+
+        // Empêche de recompter ce visiteur s'il navigue sur d'autres pages aujourd'hui
+        $_SESSION['visited_today'] = true;
+    } catch (Exception $e) {
+        // Silencieux pour ne pas bloquer le site en cas de problème avec la table
+    }
+}
+// =========================================================================
+
+
 /**
  * 5. ROUTAGE SIMPLE
  * On analyse l'URL pour savoir quelle page afficher.

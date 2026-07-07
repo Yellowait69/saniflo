@@ -23,6 +23,13 @@ $table = $_GET['table'] ?? '';
             <i class="fas fa-envelope" style="margin-right:5px;"></i> Messages
         </a>
 
+        <a href="content.php?table=site_content" class="<?= ($page === 'content.php' && $table === 'site_content') ? 'active' : '' ?>">
+            <i class="fas fa-file-alt" style="margin-right:5px;"></i> Textes du Site
+        </a>
+        <a href="content.php?table=settings" class="<?= ($page === 'content.php' && $table === 'settings') ? 'active' : '' ?>">
+            <i class="fas fa-cogs" style="margin-right:5px;"></i> Paramètres
+        </a>
+
         <a href="content.php?table=services" class="<?= ($page === 'content.php' && $table === 'services') ? 'active' : '' ?>">Services</a>
         <a href="content.php?table=pricing" class="<?= ($page === 'content.php' && $table === 'pricing') ? 'active' : '' ?>">Tarifs</a>
         <a href="content.php?table=team" class="<?= ($page === 'content.php' && $table === 'team') ? 'active' : '' ?>">Équipe</a>

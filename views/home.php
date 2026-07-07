@@ -10,8 +10,8 @@
     <meta name="author" content="Saniflo SRL">
     <meta name="robots" content="index, follow">
 
-    <meta property="og:title" content="Saniflo SRL | Chauffagiste & Sanitaire Expert">
-    <meta property="og:description" content="Votre expert de confiance pour l'entretien et l'installation de vos systèmes de chauffage et sanitaires.">
+    <meta property="og:title" content="<?= htmlspecialchars($settings['site_title'] ?? 'Saniflo SRL | Chauffagiste & Sanitaire Expert') ?>">
+    <meta property="og:description" content="<?= htmlspecialchars($settings['site_description'] ?? 'Votre expert de confiance pour l\'entretien et l\'installation de vos systèmes de chauffage et sanitaires.') ?>">
     <meta property="og:image" content="https://www.saniflo.be/img/logo-saniflo.png">
     <meta property="og:url" content="https://www.saniflo.be">
     <meta property="og:type" content="website">
@@ -69,13 +69,13 @@
 <body>
 
 <?php
-// NB: Les variables $settings, $certifications, $teamMembers, $services et $projects
-// sont automatiquement transmises ici depuis la fonction index() du HomeController.
+// NB: Les variables $settings, $site_content, $pricingData, $certifications, $teamMembers, $services et $projects
+// sont automatiquement transmises ici depuis la méthode index() du HomeController.
 
-// 1. En-tête (Logo, Nav, Hero - Modifié dynamiquement)
+// 1. En-tête (Logo, Nav, Hero - Textes modifiés dynamiquement via $site_content)
 include __DIR__ . '/partials/header.php';
 
-// 2. Présentation
+// 2. Présentation (Textes modifiés dynamiquement via $site_content)
 include __DIR__ . '/partials/about.php';
 
 // 3. Services (Boucle sur les services de la base de données)

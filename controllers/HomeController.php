@@ -34,13 +34,31 @@ class HomeController {
     }
 
     // =================================================================
+    // NOUVEAU HELPER : RÉCUPÉRER LES TEXTES DU SITE (ACCUEIL)
+    // =================================================================
+    private function getSiteContent() {
+        $content = [];
+        try {
+            $stmt = $this->pdo->query("SELECT content_key, content_value FROM site_content");
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $content[$row['content_key']] = $row['content_value'];
+            }
+        } catch (Exception $e) {
+            // Silencieux si la table n'a pas encore été créée
+        }
+        return $content;
+    }
+
+    // =================================================================
     // PAGE D'ACCUEIL
     // =================================================================
     public function index() {
         if (session_status() === PHP_SESSION_NONE) { session_start(); }
         if (empty($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
 
+        // Récupération des paramètres et des textes
         $settings = $this->getSettings();
+        $site_content = $this->getSiteContent();
 
         // Initialisation du tableau des tarifs
         $pricingData = [];
@@ -51,7 +69,7 @@ class HomeController {
             $services = Service::getAll($this->pdo);
             $projects = Project::getAll($this->pdo);
 
-            // NOUVEAU : Récupérer les tarifs depuis la table 'pricing' pour dynamiser le Wizard
+            // Récupérer les tarifs depuis la table 'pricing' pour dynamiser le Wizard
             $stmt = $this->pdo->query("SELECT service_type, price_htva FROM pricing");
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $pricingData[$row['service_type']] = $row['price_htva'];
@@ -204,7 +222,6 @@ class HomeController {
                         }
 
                         // --- SÉCURITÉ : VÉRIFICATION DU PRIX CÔTÉ SERVEUR ---
-                        // On ne fait plus confiance au $_POST['total_price_htva'] envoyé par le Javascript
                         $truePriceHtva = 0;
 
                         if ($service !== 'devis' && $service !== 'entretien_autre') {
@@ -279,22 +296,31 @@ class HomeController {
                         ];
 
                         if ($paymentMethod === 'stripe' && $priceTTC > 0) {
-                            // === PAIEMENT EN LIGNE (STRIPE) ===
+                            // === PAIEMENT EN LIGNE (STRIPE) MIS À JOUR ===
+                            // TODO: Remplacer la clé par $_ENV['STRIPE_SECRET_KEY'] en production
                             Stripe::setApiKey('sk_test_51SzZKnCHl8KtnRhXbncHLuJeJt8Oye1xLhdhxudVZCtcmOEu3YbkFX09WpIv60Iik4qpKcVghYyOU0Nd1zvqWfee00aruMK55x');
+
                             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
                             $host = $_SERVER['HTTP_HOST'];
+                            $logoUrl = "$protocol://$host/img/logo-saniflo.png";
 
                             $checkout_session = Session::create([
-                                'payment_method_types' => ['card'],
+                                'payment_method_types' => ['card', 'bancontact'], // Bancontact ajouté
+                                'customer_email' => $emailClient, // Email pré-rempli
                                 'line_items' => [[
                                     'price_data' => [
                                         'currency' => 'eur',
-                                        'product_data' => ['name' => 'Intervention: ' . $serviceLabel, 'description' => "Date: $dateRdv à $heureRdv"],
+                                        'product_data' => [
+                                            'name' => 'Intervention : ' . $serviceLabel,
+                                            'description' => "Le " . date('d/m/Y', strtotime($dateRdv)) . " à $heureRdv chez $prenom $nom.",
+                                            'images' => [$logoUrl] // Logo Saniflo affiché sur Stripe
+                                        ],
                                         'unit_amount' => (int)round($priceTTC * 100),
                                     ],
                                     'quantity' => 1,
                                 ]],
                                 'mode' => 'payment',
+                                'locale' => 'fr', // Page forcée en Français
                                 'success_url' => "$protocol://$host/public/payment_success.php?session_id={CHECKOUT_SESSION_ID}",
                                 'cancel_url' => "$protocol://$host/index.php?page=reservation&msg=cancel",
                             ]);
