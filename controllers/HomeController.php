@@ -42,11 +42,21 @@ class HomeController {
 
         $settings = $this->getSettings();
 
+        // Initialisation du tableau des tarifs
+        $pricingData = [];
+
         try {
             $certifications = Certification::getAll($this->pdo);
             $teamMembers = Team::getAll($this->pdo);
             $services = Service::getAll($this->pdo);
             $projects = Project::getAll($this->pdo);
+
+            // NOUVEAU : Récupérer les tarifs depuis la table 'pricing' pour dynamiser le Wizard
+            $stmt = $this->pdo->query("SELECT service_type, price_htva FROM pricing");
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $pricingData[$row['service_type']] = $row['price_htva'];
+            }
+
         } catch (Exception $e) {
             $certifications = $teamMembers = $services = $projects = [];
         }
@@ -193,14 +203,22 @@ class HomeController {
                             $tauxTVA = $vat_regime / 100;
                         }
 
-                        // On récupère le prix HTVA envoyé par le JavaScript
-                        $priceHtvaFromJS = (float)($_POST['total_price_htva'] ?? 0);
+                        // --- SÉCURITÉ : VÉRIFICATION DU PRIX CÔTÉ SERVEUR ---
+                        // On ne fait plus confiance au $_POST['total_price_htva'] envoyé par le Javascript
+                        $truePriceHtva = 0;
 
-                        // Le JS envoie déjà le prix de base HTVA exact, on le garde tel quel !
-                        $truePriceHtva = $priceHtvaFromJS;
+                        if ($service !== 'devis' && $service !== 'entretien_autre') {
+                            $stmtPrice = $this->pdo->prepare("SELECT price_htva FROM pricing WHERE service_type = ?");
+                            $stmtPrice->execute([$service]);
+                            $priceRow = $stmtPrice->fetch(PDO::FETCH_ASSOC);
+                            if ($priceRow) {
+                                $truePriceHtva = (float)$priceRow['price_htva'];
+                            }
+                        }
+
                         $fraisAdmin = 0;
 
-                        // On fait les calculs sur le VRAI prix de base HTVA
+                        // On fait les calculs sur le VRAI prix de base HTVA de la base de données
                         $montantTVA = $truePriceHtva * $tauxTVA;
                         $sousTotalTTC = $truePriceHtva + $montantTVA;
 
@@ -260,7 +278,7 @@ class HomeController {
                             'token' => $tokenEdit
                         ];
 
-                        if ($paymentMethod === 'stripe') {
+                        if ($paymentMethod === 'stripe' && $priceTTC > 0) {
                             // === PAIEMENT EN LIGNE (STRIPE) ===
                             Stripe::setApiKey('sk_test_51SzZKnCHl8KtnRhXbncHLuJeJt8Oye1xLhdhxudVZCtcmOEu3YbkFX09WpIv60Iik4qpKcVghYyOU0Nd1zvqWfee00aruMK55x');
                             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
@@ -288,7 +306,7 @@ class HomeController {
                             exit;
 
                         } else {
-                            // === PAIEMENT SUR PLACE / APRÈS INTERVENTION ===
+                            // === PAIEMENT SUR PLACE / APRÈS INTERVENTION / DEVIS GRATUIT ===
 
                             // 1. Définition de l'adresse du chantier pour le GPS
                             $chantierStr = $worksite_same ? "Identique à la facturation" : "$worksite_street " . ($worksite_box ? "Bte $worksite_box" : "") . ", $worksite_zip $worksite_city";
@@ -318,13 +336,17 @@ class HomeController {
 
                             $googleDesc .= "💳 PAIEMENT ET TARIFICATION\n";
                             $googleDesc .= "------------------------------------------------\n";
-                            $googleDesc .= "Statut : ⚠️ À RÉGLER SUR PLACE (Bancontact / Cash)\n";
-                            $googleDesc .= "Prix HTVA : " . number_format($truePriceHtva, 2, ',', ' ') . " €\n";
-                            $googleDesc .= "TVA ($vat_regime%) : " . number_format($montantTVA, 2, ',', ' ') . " €\n";
-                            if ($fraisAdmin > 0) {
-                                $googleDesc .= "Frais admin (3%) : " . number_format($fraisAdmin, 2, ',', ' ') . " €\n";
+                            if ($truePriceHtva > 0) {
+                                $googleDesc .= "Statut : ⚠️ À RÉGLER SUR PLACE (Bancontact / Cash)\n";
+                                $googleDesc .= "Prix HTVA : " . number_format($truePriceHtva, 2, ',', ' ') . " €\n";
+                                $googleDesc .= "TVA ($vat_regime%) : " . number_format($montantTVA, 2, ',', ' ') . " €\n";
+                                if ($fraisAdmin > 0) {
+                                    $googleDesc .= "Frais admin (3%) : " . number_format($fraisAdmin, 2, ',', ' ') . " €\n";
+                                }
+                                $googleDesc .= "TOTAL À PAYER : " . number_format($priceTTC, 2, ',', ' ') . " €\n";
+                            } else {
+                                $googleDesc .= "Statut : DEVIS / SUR PLACE\n";
                             }
-                            $googleDesc .= "TOTAL À PAYER : " . number_format($priceTTC, 2, ',', ' ') . " €\n";
 
                             // 4. Envoi à l'agenda Google
                             $logic->addEvent([
@@ -379,50 +401,52 @@ class HomeController {
 
         // --- BLOC TARIFICATION ---
         $paymentInfoHTML = "";
-        if ($data['paymentMethod'] === 'after') {
-            $paymentInfoHTML = "
-            <div style='background: #e8f5e9; padding: 20px; border-radius: 8px; border: 1px solid #a5d6a7; margin-top: 20px; color: #1b5e20;'>
-                <h3 style='margin-top:0; margin-bottom: 15px; font-size: 1.1rem; border-bottom: 1px solid #a5d6a7; padding-bottom: 8px;'>Détails de la tarification</h3>
-                <table style='width: 100%; border-collapse: collapse; font-size: 0.95rem;'>
-                    <tr>
-                        <td style='padding: 6px 0;'>Montant HTVA :</td>
-                        <td style='text-align: right;'>$montantHTVAFormat €</td>
-                    </tr>
-                    <tr>
-                        <td style='padding: 6px 0;'>TVA ({$data['vatRate']}%) :</td>
-                        <td style='text-align: right;'>$montantTVAFormat €</td>
-                    </tr>
-                    <tr>
-                        <td style='padding: 6px 0;'>Frais administratifs de facturation (3%) :</td>
-                        <td style='text-align: right;'>$fraisAdminFormat €</td>
-                    </tr>
-                    <tr>
-                        <td style='padding: 12px 0 0 0; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; margin-top: 6px;'>Total à régler sur place :</td>
-                        <td style='text-align: right; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; padding-top: 12px;'>$montantTTCFormat €</td>
-                    </tr>
-                </table>
-                <p style='font-size: 0.85rem; margin-bottom:0; margin-top: 15px; opacity: 0.9;'><i>Le technicien vous fournira les modalités de paiement sur place (Bancontact, Payconiq, Cash).</i></p>
-            </div>";
-        } else {
-            $paymentInfoHTML = "
-            <div style='background: #e8f5e9; padding: 20px; border-radius: 8px; border: 1px solid #a5d6a7; margin-top: 20px; color: #1b5e20;'>
-                <h3 style='margin-top:0; margin-bottom: 15px; font-size: 1.1rem; border-bottom: 1px solid #a5d6a7; padding-bottom: 8px;'>Détails de la tarification</h3>
-                <table style='width: 100%; border-collapse: collapse; font-size: 0.95rem;'>
-                    <tr>
-                        <td style='padding: 6px 0;'>Montant HTVA :</td>
-                        <td style='text-align: right;'>$montantHTVAFormat €</td>
-                    </tr>
-                    <tr>
-                        <td style='padding: 6px 0;'>TVA ({$data['vatRate']}%) :</td>
-                        <td style='text-align: right;'>$montantTVAFormat €</td>
-                    </tr>
-                    <tr>
-                        <td style='padding: 12px 0 0 0; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; margin-top: 6px;'>Total payé en ligne :</td>
-                        <td style='text-align: right; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; padding-top: 12px;'>$montantTTCFormat €</td>
-                    </tr>
-                </table>
-                <p style='font-size: 0.85rem; margin-bottom:0; margin-top: 15px; opacity: 0.9;'><i>Intervention payée en ligne avec succès via Stripe.</i></p>
-            </div>";
+        if ($data['truePriceHtva'] > 0) {
+            if ($data['paymentMethod'] === 'after') {
+                $paymentInfoHTML = "
+                <div style='background: #e8f5e9; padding: 20px; border-radius: 8px; border: 1px solid #a5d6a7; margin-top: 20px; color: #1b5e20;'>
+                    <h3 style='margin-top:0; margin-bottom: 15px; font-size: 1.1rem; border-bottom: 1px solid #a5d6a7; padding-bottom: 8px;'>Détails de la tarification</h3>
+                    <table style='width: 100%; border-collapse: collapse; font-size: 0.95rem;'>
+                        <tr>
+                            <td style='padding: 6px 0;'>Montant HTVA :</td>
+                            <td style='text-align: right;'>$montantHTVAFormat €</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 6px 0;'>TVA ({$data['vatRate']}%) :</td>
+                            <td style='text-align: right;'>$montantTVAFormat €</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 6px 0;'>Frais administratifs de facturation (3%) :</td>
+                            <td style='text-align: right;'>$fraisAdminFormat €</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 12px 0 0 0; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; margin-top: 6px;'>Total à régler sur place :</td>
+                            <td style='text-align: right; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; padding-top: 12px;'>$montantTTCFormat €</td>
+                        </tr>
+                    </table>
+                    <p style='font-size: 0.85rem; margin-bottom:0; margin-top: 15px; opacity: 0.9;'><i>Le technicien vous fournira les modalités de paiement sur place (Bancontact, Payconiq, Cash).</i></p>
+                </div>";
+            } else {
+                $paymentInfoHTML = "
+                <div style='background: #e8f5e9; padding: 20px; border-radius: 8px; border: 1px solid #a5d6a7; margin-top: 20px; color: #1b5e20;'>
+                    <h3 style='margin-top:0; margin-bottom: 15px; font-size: 1.1rem; border-bottom: 1px solid #a5d6a7; padding-bottom: 8px;'>Détails de la tarification</h3>
+                    <table style='width: 100%; border-collapse: collapse; font-size: 0.95rem;'>
+                        <tr>
+                            <td style='padding: 6px 0;'>Montant HTVA :</td>
+                            <td style='text-align: right;'>$montantHTVAFormat €</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 6px 0;'>TVA ({$data['vatRate']}%) :</td>
+                            <td style='text-align: right;'>$montantTVAFormat €</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 12px 0 0 0; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; margin-top: 6px;'>Total payé en ligne :</td>
+                            <td style='text-align: right; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; padding-top: 12px;'>$montantTTCFormat €</td>
+                        </tr>
+                    </table>
+                    <p style='font-size: 0.85rem; margin-bottom:0; margin-top: 15px; opacity: 0.9;'><i>Intervention payée en ligne avec succès via Stripe.</i></p>
+                </div>";
+            }
         }
 
         $subject = "Confirmation de votre rendez-vous - Saniflo SRL";

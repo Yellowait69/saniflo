@@ -1,3 +1,54 @@
+<?php
+// --- CONFIGURATION DES TARIFS PAR DÉFAUT (FALLBACK) ---
+$prixGaz = 160;
+$prixMazout = 190;
+$prixAdoucisseur = 140;
+
+// --- DÉTECTION ET CHARGEMENT DYNAMIQUE DEPUIS LA BASE DE DONNÉES ---
+if (isset($this) && property_exists($this, 'pdo')) {
+    // Liste des combinaisons probables (Français / Anglais) pour parer à toute variante de structure
+    $possibleTables = ['tarifs', 'pricing', 'prices'];
+    $possibleCodes  = ['code_service', 'service_type', 'service_code'];
+    $possiblePrices = ['prix_htva', 'price_htva'];
+
+    $wizardPricing = [];
+    $querySuccess = false;
+
+    // Boucle de détection automatique de la structure de ta table
+    foreach ($possibleTables as $t) {
+        foreach ($possibleCodes as $c) {
+            foreach ($possiblePrices as $p) {
+                try {
+                    $stmtWizard = $this->pdo->query("SELECT $c, $p FROM $t");
+                    if ($stmtWizard) {
+                        while ($row = $stmtWizard->fetch(PDO::FETCH_ASSOC)) {
+                            $wizardPricing[$row[$c]] = $row[$p];
+                        }
+                        $querySuccess = true;
+                        break 3; // Une combinaison fonctionne, on sort immédiatement des 3 boucles
+                    }
+                } catch (Exception $e) {
+                    // Échec sur cette combinaison, on passe silencieusement à la suivante
+                }
+            }
+        }
+    }
+
+    // Si la lecture a réussi, on met à jour les variables avec les vrais prix de l'admin
+    if ($querySuccess) {
+        if (isset($wizardPricing['entretien_gaz_viessmann'])) {
+            $prixGaz = $wizardPricing['entretien_gaz_viessmann'];
+        }
+        if (isset($wizardPricing['entretien_mazout_viessmann'])) {
+            $prixMazout = $wizardPricing['entretien_mazout_viessmann'];
+        }
+        if (isset($wizardPricing['entretien_adoucisseur_bwt'])) {
+            $prixAdoucisseur = $wizardPricing['entretien_adoucisseur_bwt'];
+        }
+    }
+}
+?>
+
 <section id="devis-wizard" style="scroll-margin-top: 120px;" class="section-padding">
     <div class="container">
         <div class="wizard-container">
@@ -89,12 +140,23 @@
 
                     <div class="form-group">
                         <label>Type de demande <span style="color:red;">*</span></label>
+
                         <select name="service_type" id="service_type" onchange="handleServiceLogic(); updateWizardPrice();" required style="font-weight: bold;">
                             <option value="" data-price="0">-- Choisissez une option --</option>
                             <option value="devis" data-price="0" data-type="devis">Demande de devis (Déplacement sur site)</option>
-                            <option value="entretien_gaz_viessmann" data-price="160" data-type="entretien">Entretien Chaudière GAZ - Viessmann (160€ HTVA - Tous les 2 ans)</option>
-                            <option value="entretien_mazout_viessmann" data-price="190" data-type="entretien">Entretien Chaudière MAZOUT - Viessmann (190€ HTVA - Tous les ans)</option>
-                            <option value="entretien_adoucisseur_bwt" data-price="140" data-type="entretien">Entretien Adoucisseur - BWT (140€ HTVA - Tous les 4 ans)</option>
+
+                            <option value="entretien_gaz_viessmann" data-price="<?= htmlspecialchars($prixGaz) ?>" data-type="entretien">
+                                Entretien Chaudière GAZ - Viessmann (<?= htmlspecialchars($prixGaz) ?>€ HTVA - Tous les 2 ans)
+                            </option>
+
+                            <option value="entretien_mazout_viessmann" data-price="<?= htmlspecialchars($prixMazout) ?>" data-type="entretien">
+                                Entretien Chaudière MAZOUT - Viessmann (<?= htmlspecialchars($prixMazout) ?>€ HTVA - Tous les ans)
+                            </option>
+
+                            <option value="entretien_adoucisseur_bwt" data-price="<?= htmlspecialchars($prixAdoucisseur) ?>" data-type="entretien">
+                                Entretien Adoucisseur - BWT (<?= htmlspecialchars($prixAdoucisseur) ?>€ HTVA - Tous les 4 ans)
+                            </option>
+
                             <option value="entretien_autre" data-price="0" data-type="block">Entretien d'une AUTRE MARQUE</option>
                         </select>
                     </div>
