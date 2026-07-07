@@ -23,7 +23,6 @@ class HomeController {
     private function getSettings() {
         $settings = [];
         try {
-            // Tente de récupérer les configurations si la table 'settings' existe
             $stmt = $this->pdo->query("SELECT setting_key, setting_value FROM settings");
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $settings[$row['setting_key']] = $row['setting_value'];
@@ -41,7 +40,7 @@ class HomeController {
         if (session_status() === PHP_SESSION_NONE) { session_start(); }
         if (empty($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
 
-        $settings = $this->getSettings(); // Récupère les textes/images dynamiques
+        $settings = $this->getSettings();
 
         try {
             $certifications = Certification::getAll($this->pdo);
@@ -107,7 +106,6 @@ class HomeController {
                             $headers = "MIME-Version: 1.0\r\n";
                             $headers .= "Content-type:text/html;charset=UTF-8\r\n";
                             $headers .= "From: Saniflo SRL <info@saniflo.be>\r\n";
-                            // --- COPIE A INFO@SANIFLO.BE ---
                             $headers .= "Bcc: info@saniflo.be\r\n";
 
                             mail($to, $subject, $emailBody, $headers);
@@ -174,7 +172,7 @@ class HomeController {
                         $worksite_city = $_POST['worksite_city'] ?? null;
 
                         // Appareil
-                        $clientStatus = $_POST['client_status'] ?? 'new'; // new ou existing
+                        $clientStatus = $_POST['client_status'] ?? 'new';
                         $device_model = ($clientStatus === 'new') ? ($_POST['device_model'] ?? null) : 'Client Existant';
                         $device_year = ($clientStatus === 'new' && !empty($_POST['device_year'])) ? $_POST['device_year'] : null;
                         $device_kw = ($clientStatus === 'new') ? ($_POST['device_kw'] ?? null) : null;
@@ -183,22 +181,39 @@ class HomeController {
                         $paymentMethod = $_POST['payment_method'] ?? 'stripe';
                         $descUser = $_POST['description'] ?? '';
 
-                        // CALCUL EXACT DE LA TVA (Selon le choix utilisateur)
+                        // CALCUL EXACT DE LA TVA
                         $tauxTVA = 0.21;
                         $vat_regime = 21;
+
                         if ($is_company) {
-                            $vat_regime = isset($_POST['vat_regime']) ? (int)$_POST['vat_regime'] : 21;
+                            $vat_regime = isset($_POST['vat_rate_company']) ? (int)$_POST['vat_rate_company'] : (isset($_POST['vat_regime']) ? (int)$_POST['vat_regime'] : 21);
                             $tauxTVA = $vat_regime / 100;
                         } else {
-                            $vat_regime = isset($_POST['vat_rate']) ? (int)$_POST['vat_rate'] : 21;
+                            $vat_regime = isset($_POST['vat_rate_private']) ? (int)$_POST['vat_rate_private'] : (isset($_POST['vat_rate']) ? (int)$_POST['vat_rate'] : 21);
                             $tauxTVA = $vat_regime / 100;
                         }
 
-                        $priceHtva = (float)($_POST['total_price_htva'] ?? 0); // On récupère le prix de base calculé en JS
-                        $priceTTC = $priceHtva * (1 + $tauxTVA);
+                        // On récupère le prix HTVA envoyé par le JavaScript
+                        $priceHtvaFromJS = (float)($_POST['total_price_htva'] ?? 0);
+                        $truePriceHtva = $priceHtvaFromJS;
+                        $fraisAdmin = 0;
+
                         if ($paymentMethod === 'after') {
-                            $priceTTC *= 1.03; // Frais admin 3%
+                            // On retrouve le VRAI prix de base HTVA en retirant les 3% ajoutés par le JS
+                            $truePriceHtva = $priceHtvaFromJS / 1.03;
                         }
+
+                        // On fait les calculs sur le VRAI prix de base HTVA
+                        $montantTVA = $truePriceHtva * $tauxTVA;
+                        $sousTotalTTC = $truePriceHtva + $montantTVA;
+
+                        // On applique les frais de 3% à la toute fin sur le TTC
+                        if ($paymentMethod === 'after') {
+                            $fraisAdmin = $sousTotalTTC * 0.03;
+                        }
+
+                        // Le total final que le client va payer
+                        $priceTTC = $sousTotalTTC + $fraisAdmin;
 
                         $serviceMap = [
                             'entretien_gaz_viessmann' => 'Entretien Gaz Viessmann',
@@ -229,16 +244,23 @@ class HomeController {
                             $rue, $bte, $zip, $ville,
                             $worksite_same, $worksite_street, $worksite_box, $worksite_zip, $worksite_city,
                             $device_model, $device_year, $device_kw,
-                            $full_datetime, $paymentMethod, $priceHtva, $descUser, $initialStatus, $initialPaymentStatus, $tokenEdit
+                            $full_datetime, $paymentMethod, $truePriceHtva, $descUser, $initialStatus, $initialPaymentStatus, $tokenEdit
                         ]);
                         $lastInsertId = $this->pdo->lastInsertId();
 
-                        // PREPARATION DES DATA POUR L'EMAIL (Communs aux deux méthodes)
+                        // PREPARATION DES DATA POUR L'EMAIL
                         $emailData = [
                             'prenom' => $prenom, 'nom' => $nom, 'email' => $emailClient, 'tel' => $telephone,
                             'service' => $serviceLabel, 'date' => $dateRdv, 'heure' => $heureRdv,
                             'adresse' => $fullAddress, 'appareil' => "$device_model ($device_year) $device_kw",
-                            'paymentMethod' => $paymentMethod, 'totalTTC' => $priceTTC, 'token' => $tokenEdit
+                            'paymentMethod' => $paymentMethod,
+                            'truePriceHtva' => $truePriceHtva,
+                            'montantTVA' => $montantTVA,
+                            'fraisAdmin' => $fraisAdmin,
+                            'vatRate' => $vat_regime,
+                            'totalTTC' => $priceTTC,
+                            'descUser' => $descUser,
+                            'token' => $tokenEdit
                         ];
 
                         if ($paymentMethod === 'stripe') {
@@ -276,7 +298,7 @@ class HomeController {
                             // Envoi du mail hyper détaillé + copie Info
                             $this->sendReservationEmail($emailData);
 
-                            $message_status = '<div class="alert success" style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px;">Rendez-vous confirmé ! Un email récapitulatif avec le montant vous a été envoyé.</div>';
+                            $message_status = '<div class="alert success" style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px;">Rendez-vous confirmé ! Un email récapitulatif détaillé vous a été envoyé.</div>';
                         }
 
                     } catch (Exception $e) {
@@ -291,7 +313,7 @@ class HomeController {
     }
 
     // =================================================================
-    // NOUVEAU HELPER : ENVOI DE L'EMAIL DE RÉSERVATION COMPLET
+    // HELPER : ENVOI DE L'EMAIL DE RÉSERVATION COMPLET ET DÉTAILLÉ
     // =================================================================
     private function sendReservationEmail($data) {
         $settings = $this->getSettings();
@@ -303,17 +325,64 @@ class HomeController {
         $logoUrl = "$protocol://$host/img/logo-saniflo.png";
 
         $dateFr = date('d/m/Y', strtotime($data['date']));
-        $montantFormat = number_format($data['totalTTC'], 2, ',', ' ');
 
+        $montantHTVAFormat = number_format($data['truePriceHtva'], 2, ',', ' ');
+        $montantTVAFormat = number_format($data['montantTVA'], 2, ',', ' ');
+        $fraisAdminFormat = number_format($data['fraisAdmin'], 2, ',', ' ');
+        $montantTTCFormat = number_format($data['totalTTC'], 2, ',', ' ');
+
+        // --- BLOC REMARQUES CLIENT ---
+        $descriptionHTML = "";
+        if (!empty($data['descUser'])) {
+            $descriptionHTML = "<li style='margin-bottom:8px; margin-top:15px; padding-top:15px; border-top: 1px solid #ddd;'><strong>Vos remarques / description de la demande :</strong><br><i style='color:#555; display:block; margin-top:5px;'>" . nl2br(htmlspecialchars($data['descUser'])) . "</i></li>";
+        }
+
+        // --- BLOC TARIFICATION ---
         $paymentInfoHTML = "";
         if ($data['paymentMethod'] === 'after') {
             $paymentInfoHTML = "
-            <div style='background: #e8f5e9; padding: 15px; border-radius: 8px; border: 1px solid #a5d6a7; margin-top: 20px; color: #1b5e20;'>
-                <h3 style='margin-top:0;'>Montant à régler après l'intervention : $montantFormat € (TVAC)</h3>
-                <p style='font-size: 0.9rem; margin-bottom:0;'><i>Ce montant inclut les frais administratifs liés au paiement différé. Le technicien vous fournira les modalités de paiement sur place.</i></p>
+            <div style='background: #e8f5e9; padding: 20px; border-radius: 8px; border: 1px solid #a5d6a7; margin-top: 20px; color: #1b5e20;'>
+                <h3 style='margin-top:0; margin-bottom: 15px; font-size: 1.1rem; border-bottom: 1px solid #a5d6a7; padding-bottom: 8px;'>Détails de la tarification</h3>
+                <table style='width: 100%; border-collapse: collapse; font-size: 0.95rem;'>
+                    <tr>
+                        <td style='padding: 6px 0;'>Montant HTVA :</td>
+                        <td style='text-align: right;'>$montantHTVAFormat €</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 6px 0;'>TVA ({$data['vatRate']}%) :</td>
+                        <td style='text-align: right;'>$montantTVAFormat €</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 6px 0;'>Frais administratifs de facturation (3%) :</td>
+                        <td style='text-align: right;'>$fraisAdminFormat €</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 12px 0 0 0; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; margin-top: 6px;'>Total à régler sur place :</td>
+                        <td style='text-align: right; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; padding-top: 12px;'>$montantTTCFormat €</td>
+                    </tr>
+                </table>
+                <p style='font-size: 0.85rem; margin-bottom:0; margin-top: 15px; opacity: 0.9;'><i>Le technicien vous fournira les modalités de paiement sur place (Bancontact, Payconiq, Cash).</i></p>
             </div>";
         } else {
-            $paymentInfoHTML = "<p style='color: #2e7d32; font-weight:bold;'>Intervention payée en ligne ($montantFormat € TVAC).</p>";
+            $paymentInfoHTML = "
+            <div style='background: #e8f5e9; padding: 20px; border-radius: 8px; border: 1px solid #a5d6a7; margin-top: 20px; color: #1b5e20;'>
+                <h3 style='margin-top:0; margin-bottom: 15px; font-size: 1.1rem; border-bottom: 1px solid #a5d6a7; padding-bottom: 8px;'>Détails de la tarification</h3>
+                <table style='width: 100%; border-collapse: collapse; font-size: 0.95rem;'>
+                    <tr>
+                        <td style='padding: 6px 0;'>Montant HTVA :</td>
+                        <td style='text-align: right;'>$montantHTVAFormat €</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 6px 0;'>TVA ({$data['vatRate']}%) :</td>
+                        <td style='text-align: right;'>$montantTVAFormat €</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 12px 0 0 0; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; margin-top: 6px;'>Total payé en ligne :</td>
+                        <td style='text-align: right; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; padding-top: 12px;'>$montantTTCFormat €</td>
+                    </tr>
+                </table>
+                <p style='font-size: 0.85rem; margin-bottom:0; margin-top: 15px; opacity: 0.9;'><i>Intervention payée en ligne avec succès via Stripe.</i></p>
+            </div>";
         }
 
         $subject = "Confirmation de votre rendez-vous - Saniflo SRL";
@@ -334,6 +403,7 @@ class HomeController {
                         <li style='margin-bottom:8px;'><strong>Adresse :</strong> {$data['adresse']}</li>
                         <li style='margin-bottom:8px;'><strong>Appareil :</strong> {$data['appareil']}</li>
                         <li style='margin-bottom:8px;'><strong>Contact :</strong> {$data['tel']}</li>
+                        $descriptionHTML
                     </ul>
                 </div>
 
@@ -349,22 +419,18 @@ class HomeController {
         </html>";
 
         $headers = "MIME-Version: 1.0\r\nContent-type:text/html;charset=UTF-8\r\nFrom: Saniflo SRL <info@saniflo.be>\r\n";
-        // --- LA COPIE EST ENVOYÉE ICI AUTOMATIQUEMENT ---
         $headers .= "Bcc: info@saniflo.be\r\n";
 
         mail($data['email'], $subject, $body, $headers);
     }
 
     // =================================================================
-    // NOUVEAU : CRON JOB (RAPPEL J-2)
-    // À exécuter chaque jour à 08:00 via le serveur:
-    // wget -qO- https://votre-site.be/index.php?page=cron_reminders
+    // CRON JOB (RAPPEL J-2)
     // =================================================================
     public function cron_reminders() {
         $settings = $this->getSettings();
         $rappelText = $settings['email_reminder'] ?? "Ceci est un rappel pour votre rendez-vous prévu dans deux jours avec Saniflo SRL.";
 
-        // On cherche les rdv prévus dans exactement 2 jours (et non annulés)
         $targetDate = date('Y-m-d', strtotime('+2 days'));
         $stmt = $this->pdo->prepare("SELECT * FROM quote_requests WHERE DATE(appointment_date) = ? AND status != 'annulé'");
         $stmt->execute([$targetDate]);
@@ -419,7 +485,6 @@ class HomeController {
             exit;
         }
 
-        // 1. Récupération du rendez-vous en base de données
         $stmt = $this->pdo->prepare("SELECT * FROM quote_requests WHERE edit_token = ?");
         $stmt->execute([$token]);
         $rdv = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -430,13 +495,10 @@ class HomeController {
             return;
         }
 
-        // 2. Vérification de la règle des 7 jours (Délais de modification)
         $now = time();
         $rdvTime = strtotime($rdv['appointment_date']);
-        // 7 jours = 7 * 24 heures * 60 minutes * 60 secondes
         $peutModifier = (($rdvTime - $now) >= (7 * 24 * 60 * 60));
 
-        // 3. Traitement du formulaire (POST)
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && $peutModifier && $rdv['status'] !== 'annulé') {
             $action = $_POST['action'] ?? '';
             $logic = new PlanningLogic($this->pdo);
@@ -445,49 +507,37 @@ class HomeController {
             $timeOnly = date('H:i', $rdvTime);
             $clientName = $rdv['lastname'];
 
-            // =========================
-            // ACTION : ANNULATION
-            // =========================
             if ($action === 'cancel') {
-                // Suppression Agenda
                 $eventId = $logic->findEventId($dateOnly, $timeOnly, $clientName);
                 if ($eventId) {
                     $logic->deleteEvent($eventId);
                 }
 
-                // Mise à jour de la BDD
                 $stmt = $this->pdo->prepare("UPDATE quote_requests SET status = 'annulé' WHERE id = ?");
                 $stmt->execute([$rdv['id']]);
                 $rdv['status'] = 'annulé';
 
                 $message_status = '<div class="alert success" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px;">Votre rendez-vous a été annulé avec succès.</div>';
 
-                // Email de notification
                 $this->sendNotificationEmail($rdv, 'Annulation');
 
-                // =========================
-                // ACTION : DÉPLACEMENT (REPORT)
-                // =========================
             } elseif ($action === 'reschedule') {
                 $newDate = $_POST['new_date'] ?? '';
                 $newTime = $_POST['new_time'] ?? '';
 
                 if (!empty($newDate) && !empty($newTime)) {
-                    $zip = $rdv['worksite_zip'] ?: $rdv['billing_zip']; // Priorité à l'adresse du chantier
+                    $zip = $rdv['worksite_zip'] ?: $rdv['billing_zip'];
 
-                    // Vérification que le nouveau créneau n'a pas été pris entre-temps
                     $slotsCheck = $logic->getAvailableSlots($newDate, $zip);
 
                     if (isset($slotsCheck['error']) || !in_array($newTime, $slotsCheck['slots'])) {
                         $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin-bottom:20px;">Ce créneau n\'est plus disponible. Veuillez en choisir un autre.</div>';
                     } else {
-                        // 1. Suppression de l'ancien événement Google Agenda
                         $eventId = $logic->findEventId($dateOnly, $timeOnly, $clientName);
                         if ($eventId) {
                             $logic->deleteEvent($eventId);
                         }
 
-                        // 2. Création du nouvel événement Google Agenda
                         $bte = !empty($rdv['billing_box']) ? "Bte " . $rdv['billing_box'] : "";
                         $fullAddress = "{$rdv['billing_street']} $bte, {$rdv['billing_zip']} {$rdv['billing_city']}";
                         $googleDesc = "Client: {$rdv['firstname']} {$rdv['lastname']}\nTél: {$rdv['phone']}\nAdresse: {$fullAddress}\nAppareil: {$rdv['device_model']}\nPaiement: {$rdv['payment_method']} (RDV MODIFIÉ EN LIGNE)";
@@ -500,24 +550,20 @@ class HomeController {
                             'time' => $newTime
                         ]);
 
-                        // 3. Mise à jour en Base de Données
                         $newDateTime = $newDate . ' ' . $newTime . ':00';
                         $stmt = $this->pdo->prepare("UPDATE quote_requests SET appointment_date = ? WHERE id = ?");
                         $stmt->execute([$newDateTime, $rdv['id']]);
 
-                        // Mise à jour de la variable pour l'affichage de la vue
                         $rdv['appointment_date'] = $newDateTime;
 
                         $message_status = '<div class="alert success" style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px; margin-bottom:20px;">Votre rendez-vous a été déplacé avec succès au ' . date('d/m/Y', strtotime($newDate)) . ' à ' . $newTime . '.</div>';
 
-                        // 4. Email de notification
                         $this->sendNotificationEmail($rdv, 'Modification', $newDate, $newTime);
                     }
                 }
             }
         }
 
-        // Affichage de la vue
         require __DIR__ . '/../views/modifier_rdv.php';
     }
 
@@ -554,7 +600,6 @@ class HomeController {
         $headers = "MIME-Version: 1.0\r\n";
         $headers .= "Content-type:text/html;charset=UTF-8\r\n";
         $headers .= "From: Saniflo SRL <info@saniflo.be>\r\n";
-        // L'admin reçoit automatiquement une copie de la modification ou annulation !
         $headers .= "Bcc: info@saniflo.be\r\n";
 
         mail($to, $subject, $body, $headers);

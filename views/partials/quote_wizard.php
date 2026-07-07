@@ -10,7 +10,6 @@
                 <i class="fas fa-exclamation-triangle"></i> <span id="zone-alert-text"></span>
             </div>
 
-            <!-- Indicateurs de progression -->
             <div class="wizard-steps">
                 <div class="step-indicator active" data-step="0" data-title="Profil">1</div>
                 <div class="step-indicator" data-step="1" data-title="Demande">2</div>
@@ -22,7 +21,6 @@
 
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
 
-                <!-- ETAPE 1 : PROFIL ET TVA -->
                 <div class="step active-step">
                     <h3><i class="fas fa-user-circle"></i> Votre Profil</h3>
 
@@ -73,7 +71,6 @@
                     </div>
                 </div>
 
-                <!-- ETAPE 2 : APPAREIL & INTERVENTION -->
                 <div class="step">
                     <h3><i class="fas fa-tools"></i> Votre Demande</h3>
 
@@ -113,7 +110,6 @@
                         <strong>Information importante :</strong> Pour l'entretien d'une autre marque, la prise de rendez-vous en ligne n'est pas disponible. Merci de nous contacter au préalable.
                     </div>
 
-                    <!-- Détails de l'appareil -->
                     <div id="device-details-group">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                             <div class="form-group">
@@ -148,7 +144,6 @@
                     </div>
                 </div>
 
-                <!-- ETAPE 3 : COORDONNÉES -->
                 <div class="step">
                     <h3><i class="fas fa-file-invoice"></i> Adresse de Facturation</h3>
 
@@ -211,7 +206,6 @@
                     </div>
                 </div>
 
-                <!-- ETAPE 4 : DATE ET PAIEMENT -->
                 <div class="step">
                     <h3><i class="fas fa-calendar-alt"></i> Planification & Paiement</h3>
 
@@ -253,9 +247,31 @@
                         </div>
                     </div>
 
-                    <div class="price-display" style="background: #f1f8e9; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; font-size: 1.1rem; color: #2e7d32; border: 1px solid #c5e1a5;">
-                        <strong>Total estimé de l'intervention (TVAC) : <span id="display_price">0.00</span> €</strong>
-                        <p style="font-size: 0.85rem; margin-top: 5px; color: #555;">(Ce montant est donné à titre indicatif et ne s'applique pas aux demandes de devis)</p>
+                    <div id="price-display-block" class="price-display" style="background: #f1f8e9; padding: 20px; border-radius: 8px; margin-top: 20px; color: #2e7d32; border: 1px solid #c5e1a5;">
+                        <h4 style="margin-top:0; border-bottom: 1px solid #c5e1a5; padding-bottom: 10px; text-align: center;"><i class="fas fa-receipt"></i> Détail de l'estimation</h4>
+
+                        <div style="display: flex; justify-content: space-between; font-size: 0.95rem; margin-bottom: 8px; color: #555;">
+                            <span>Montant de l'intervention (HTVA) :</span>
+                            <span><strong id="display_price_htva">0.00</strong> €</span>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; font-size: 0.95rem; margin-bottom: 8px; color: #555;">
+                            <span>TVA (<span id="display_vat_rate">21</span>%) :</span>
+                            <span><strong id="display_vat_amount">0.00</strong> €</span>
+                        </div>
+
+                        <div id="admin_fee_row" style="display: none; justify-content: space-between; font-size: 0.95rem; margin-bottom: 8px; color: #e65100; font-weight: bold;">
+                            <span>Frais administratifs (+3%) :</span>
+                            <span><strong id="display_admin_fee">0.00</strong> €</span>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: bold; margin-top: 15px; border-top: 1px solid #c5e1a5; padding-top: 15px;">
+                            <span>Total estimé (TVAC) :</span>
+                            <span><span id="display_price">0.00</span> €</span>
+                        </div>
+
+                        <p style="font-size: 0.8rem; margin-top: 15px; margin-bottom: 0; color: #666; text-align: center;">(Ce montant est donné à titre indicatif selon vos déclarations)</p>
+
                         <input type="hidden" name="total_price_htva" id="input_price_htva" value="0">
                         <input type="hidden" name="total_price_tvac" id="input_price_tvac" value="0">
                     </div>

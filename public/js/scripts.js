@@ -264,6 +264,9 @@ function initDynamicUI() {
     const isCompanyInit = document.getElementById('type_company') && document.getElementById('type_company').checked;
     if (window.toggleCompanyFields) window.toggleCompanyFields(isCompanyInit);
 
+    // Initialiser les affichages des services
+    if (window.handleServiceLogic) window.handleServiceLogic();
+
     // Calcul initial des prix au chargement
     setTimeout(updateWizardPrice, 300);
 }
@@ -271,6 +274,36 @@ function initDynamicUI() {
 // ==========================================
 // FONCTIONS GLOBALES (Appelées depuis le HTML)
 // ==========================================
+
+// --- GESTION DES SERVICES (Alerte Autre Marque, Devis, etc) ---
+window.handleServiceLogic = function() {
+    const serviceSelect = document.getElementById('service_type');
+    if (!serviceSelect) return;
+
+    const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
+    const type = selectedOption.getAttribute('data-type'); // 'entretien', 'devis', ou 'block'
+
+    const disclaimer = document.getElementById('maintenance-disclaimer');
+    const otherAlert = document.getElementById('other-brand-alert');
+    const deviceDetails = document.getElementById('device-details-group');
+    const nextBtn = document.getElementById('next-btn-step2');
+
+    // Afficher l'avertissement d'entretien
+    if (disclaimer) {
+        disclaimer.style.display = (type === 'entretien') ? 'block' : 'none';
+    }
+
+    // Si c'est une "Autre marque", on bloque la réservation
+    if (type === 'block') {
+        if (otherAlert) otherAlert.style.display = 'block';
+        if (deviceDetails) deviceDetails.style.display = 'none';
+        if (nextBtn) nextBtn.disabled = true;
+    } else {
+        if (otherAlert) otherAlert.style.display = 'none';
+        if (deviceDetails) deviceDetails.style.display = 'block';
+        if (nextBtn) nextBtn.disabled = false;
+    }
+};
 
 // --- NOUVEAU vs ANCIEN CLIENT ---
 window.toggleClientStatus = function(status) {
@@ -347,7 +380,7 @@ window.toggleWorksite = function(isSame) {
 };
 
 // ==========================================
-// CALCUL DES TARIFS ET DE LA TVA
+// CALCUL DES TARIFS ET DE LA TVA (DÉTAILLÉ)
 // ==========================================
 window.updateWizardPrice = function() {
     const serviceSelect = document.getElementById('service_type');
@@ -356,11 +389,10 @@ window.updateWizardPrice = function() {
     const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
     let basePriceHTVA = parseFloat(selectedOption.getAttribute('data-price')) || 0;
 
-    // Frais admin si paiement après intervention (+3%)
-    const paymentMethodEl = document.querySelector('input[name="payment_method"]:checked');
-    const paymentMethod = paymentMethodEl ? paymentMethodEl.value : 'stripe';
-    if (paymentMethod === 'after') {
-        basePriceHTVA = basePriceHTVA * 1.03;
+    // Masquer le bloc de prix si c'est un "devis" ou 0€
+    const priceBlock = document.getElementById('price-display-block');
+    if (priceBlock) {
+        priceBlock.style.display = basePriceHTVA > 0 ? 'block' : 'none';
     }
 
     // Détermination du taux de TVA
@@ -375,15 +407,53 @@ window.updateWizardPrice = function() {
         if (privateVatSelect) vatRate = parseFloat(privateVatSelect.value) || 21;
     }
 
-    // Calcul du TVAC
-    const finalPriceTVAC = basePriceHTVA * (1 + (vatRate / 100));
+    // Calculs de base
+    const montantTVA = basePriceHTVA * (vatRate / 100);
+    const sousTotalTTC = basePriceHTVA + montantTVA;
 
-    // Mise à jour de l'affichage et des inputs cachés
+    // Frais admin si paiement après intervention (+3%)
+    const paymentMethodEl = document.querySelector('input[name="payment_method"]:checked');
+    const paymentMethod = paymentMethodEl ? paymentMethodEl.value : 'stripe';
+
+    let fraisAdmin = 0;
+    if (paymentMethod === 'after' && basePriceHTVA > 0) {
+        fraisAdmin = sousTotalTTC * 0.03;
+    }
+
+    // Calcul du Total Final
+    const finalPriceTVAC = sousTotalTTC + fraisAdmin;
+
+    // Mise à jour de l'affichage HTML
     const displayEl = document.getElementById('display_price');
+    const displayHtvaEl = document.getElementById('display_price_htva');
+    const displayVatRateEl = document.getElementById('display_vat_rate');
+    const displayVatAmountEl = document.getElementById('display_vat_amount');
+
+    const adminFeeRow = document.getElementById('admin_fee_row');
+    const displayAdminFeeEl = document.getElementById('display_admin_fee');
+
+    // Assigner les valeurs calculées
+    if (displayEl) displayEl.innerText = finalPriceTVAC.toFixed(2);
+    if (displayHtvaEl) displayHtvaEl.innerText = basePriceHTVA.toFixed(2);
+    if (displayVatRateEl) displayVatRateEl.innerText = vatRate;
+    if (displayVatAmountEl) displayVatAmountEl.innerText = montantTVA.toFixed(2);
+
+    // Gérer l'affichage de la ligne des 3%
+    if (adminFeeRow && displayAdminFeeEl) {
+        if (fraisAdmin > 0) {
+            adminFeeRow.style.display = 'flex';
+            displayAdminFeeEl.innerText = fraisAdmin.toFixed(2);
+        } else {
+            adminFeeRow.style.display = 'none';
+            displayAdminFeeEl.innerText = '0.00';
+        }
+    }
+
+    // Mise à jour des inputs cachés (envoyés au PHP)
     const inputHtvaEl = document.getElementById('input_price_htva');
     const inputTvacEl = document.getElementById('input_price_tvac');
 
-    if (displayEl) displayEl.innerText = finalPriceTVAC.toFixed(2);
+    // On envoie le VRAI prix de base HTVA (sans le fausser avec les frais administratifs)
     if (inputHtvaEl) inputHtvaEl.value = basePriceHTVA.toFixed(2);
     if (inputTvacEl) inputTvacEl.value = finalPriceTVAC.toFixed(2);
 };
