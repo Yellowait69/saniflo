@@ -23,6 +23,10 @@ $table = $_GET['table'] ?? '';
             <i class="fas fa-envelope" style="margin-right:5px;"></i> Messages
         </a>
 
+        <a href="reviews.php" class="<?= $page === 'reviews.php' ? 'active' : '' ?>">
+            <i class="fas fa-star" style="margin-right:5px;"></i> Avis Clients
+        </a>
+
         <a href="content.php?table=site_content" class="<?= ($page === 'content.php' && $table === 'site_content') ? 'active' : '' ?>">
             <i class="fas fa-file-alt" style="margin-right:5px;"></i> Textes du Site
         </a>

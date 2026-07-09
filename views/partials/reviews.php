@@ -1,3 +1,20 @@
+<?php
+// 1. On tente de récupérer la connexion globale si elle existe déjà
+global $pdo;
+
+// Si $pdo n'est pas défini ou n'est pas un objet valide (s'il vaut "true" suite à un require_once)
+if (!isset($pdo) || !is_object($pdo)) {
+    // On utilise "require" (et non require_once) avec le bon chemin pour forcer PHP à charger l'objet
+    $pdo = require __DIR__ . '/../../config/db.php';
+}
+
+// 2. On récupère les avis depuis la base de données
+$reviewsList = [];
+if (is_object($pdo)) {
+    $stmtReviews = $pdo->query("SELECT * FROM reviews ORDER BY review_date DESC");
+    $reviewsList = $stmtReviews->fetchAll(PDO::FETCH_ASSOC);
+}
+?>
 <section id="avis-google" style="padding: 60px 0; background-color: var(--bg-light); position: relative;">
     <div id="nb-avis-top" style="position: absolute; top: -100px; left: 0;"></div>
 
@@ -14,115 +31,37 @@
             </button>
 
             <div class="reviews-slider" id="reviewsSlider">
-                <div class="review-card">
-                    <div class="review-header">
-                        <div class="reviewer-avatar" style="background-color: #4285F4;">A</div>
-                        <div class="reviewer-info">
-                            <h4>Andre Toche</h4>
-                            <div class="stars">
-                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            </div>
-                            <span class="review-date">07/05/2026</span>
-                        </div>
-                        <i class="fab fa-google google-icon"></i>
-                    </div>
-                    <p class="review-text">"Toujours de bon conseil, vous avez réalisé une installation impeccable.
-                        Nous apprécions votre professionnalisme, votre soucis du travail bien fait et votre disponibilité pour réagir en cas d'urgence.
-                        A recommander sans la moindre hésitation"</p>
-                </div>
 
-                <div class="review-card">
-                    <div class="review-header">
-                        <div class="reviewer-avatar" style="background-color: #34A853;">P</div>
-                        <div class="reviewer-info">
-                            <h4>Philippe</h4>
-                            <div class="stars">
-                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                <?php foreach($reviewsList as $review):
+                    // Récupération de la première lettre du nom pour l'avatar
+                    $initial = strtoupper(substr($review['author_name'], 0, 1));
+                    ?>
+                    <div class="review-card">
+                        <div class="review-header">
+                            <div class="reviewer-avatar" style="background-color: <?= htmlspecialchars($review['avatar_color']) ?>;">
+                                <?= htmlspecialchars($initial) ?>
                             </div>
-                            <span class="review-date">07/05/2026</span>
+                            <div class="reviewer-info">
+                                <h4><?= htmlspecialchars($review['author_name']) ?></h4>
+                                <div class="stars">
+                                    <?php for($i = 1; $i <= 5; $i++): ?>
+                                        <i class="<?= $i <= $review['rating'] ? 'fas' : 'far' ?> fa-star"></i>
+                                    <?php endfor; ?>
+                                </div>
+                                <span class="review-date"><?= date('d/m/Y', strtotime($review['review_date'])) ?></span>
+                            </div>
+                            <i class="fab fa-google google-icon"></i>
                         </div>
-                        <i class="fab fa-google google-icon"></i>
+                        <p class="review-text">"<?= nl2br(htmlspecialchars($review['review_text'])) ?>"</p>
                     </div>
-                    <p class="review-text">"Monsieur Dengis est efficace, passionné et professionnel. Il a travaillé sur mon installation solaire thermique pour dégazer le circuit au glycol, vérifier les pressions et s'est aperçu que la sonde récemment remplacée par moi n'était pas la bonne. en une heure trente l'affaire était réglée. je recommande"</p>
-                </div>
+                <?php endforeach; ?>
 
-                <div class="review-card">
-                    <div class="review-header">
-                        <div class="reviewer-avatar" style="background-color: #FBBC05;">C</div>
-                        <div class="reviewer-info">
-                            <h4>claude gits</h4>
-                            <div class="stars">
-                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            </div>
-                            <span class="review-date">05/05/26</span>
-                        </div>
-                        <i class="fab fa-google google-icon"></i>
+                <?php if(empty($reviewsList)): ?>
+                    <div class="review-card" style="text-align: center; justify-content: center; width: 100%; border-top: 4px solid #ccc;">
+                        <p style="color: #777;">Aucun avis pour le moment. Soyez le premier à nous laisser votre impression !</p>
                     </div>
-                    <p class="review-text">"Que dire d'autre que... PARFAIT
-                        Monsieur Dengis est très réactif, efficace et consciencieux.
-                        Très bonne communication, ce qui est appréciable.
-                        Merci également à Madame pour le suivi administratif."</p>
-                </div>
+                <?php endif; ?>
 
-                <div class="review-card">
-                    <div class="review-header">
-                        <div class="reviewer-avatar" style="background-color: #4285F4;">M</div>
-                        <div class="reviewer-info">
-                            <h4>Michel DETREMBLEUR</h4>
-                            <div class="stars">
-                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            </div>
-                            <span class="review-date">01/05/2026</span>
-                        </div>
-                        <i class="fab fa-google google-icon"></i>
-                    </div>
-                    <p class="review-text">"Installation réussie,dans les temps,par une personne très agréable.Monsieur Dengis prend son temps pour nous expliquer le fonctionnement de la chaudière Viessmann VITO 300 ainsi que le mode d'emploi;en bref,le chauffagiste rêvé!"</p>
-                </div>
-
-                <div class="review-card">
-                    <div class="review-header">
-                        <div class="reviewer-avatar" style="background-color: #EA4335;">C</div>
-                        <div class="reviewer-info">
-                            <h4>Christian Brohet</h4>
-                            <div class="stars">
-                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            </div>
-                            <span class="review-date">30/04/2026</span>
-                        </div>
-                        <i class="fab fa-google google-icon"></i>
-                    </div>
-                    <p class="review-text">"Excellent service pour entretien d'un adoucisseur et conseils avisés pour problème de sanitaire. Contact chaleureux et efficience professionnelle. A recommander!"</p>
-                </div>
-
-                <div class="review-card">
-                    <div class="review-header">
-                        <div class="reviewer-avatar" style="background-color: #34A853;">F</div>
-                        <div class="reviewer-info">
-                            <h4>Florian Herinckx</h4>
-                            <div class="stars">
-                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            </div>
-                            <span class="review-date">23/04/2026</span>
-                        </div>
-                        <i class="fab fa-google google-icon"></i>
-                    </div>
-                    <p class="review-text">"Un chauffagiste sympathique, qui arrive à l'heure, passionné par son métier et calé techniquement, ça ne court pas les rues ! N'hésitez pas à faire appel à Mr Dengis ! Satisfaction garantie !"</p>
-                </div>
-
-                <div class="review-card">
-                    <div class="review-header">
-                        <div class="reviewer-avatar" style="background-color: #FBBC05;">S</div>
-                        <div class="reviewer-info">
-                            <h4>Sally Gardiner</h4>
-                            <div class="stars">
-                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
-                            </div>
-                            <span class="review-date">16/04/2026</span>
-                        </div>
-                        <i class="fab fa-google google-icon"></i>
-                    </div>
-                    <p class="review-text">"Tres professionnelle, service inpecable, courtois et, toujours, de bon humeur. Merci, M. Dengis, pour votre intervention aujourd'hui."</p>
-                </div>
             </div>
 
             <button type="button" class="slider-btn review-next" aria-label="Suivant">
