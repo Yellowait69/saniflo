@@ -1,6 +1,11 @@
 <?php
 // public/payment_success.php
 
+// === DÉMARRAGE DE LA SESSION (Requis pour vider le formulaire sauvegardé) ===
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // 1. Chargement des dépendances
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../services/PlanningLogic.php'; // Pour Google Agenda
@@ -37,6 +42,9 @@ if ($session_id) {
             $rdv = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($rdv && $rdv['payment_status'] === 'unpaid') {
+
+                // === ON VIDE LA SAUVEGARDE DU FORMULAIRE CAR LE PAIEMENT A RÉUSSI ===
+                unset($_SESSION['reservation_form_data']);
 
                 // --- SÉCURITÉ : Vérification et génération du Token de modification ---
                 $token = $rdv['edit_token'];

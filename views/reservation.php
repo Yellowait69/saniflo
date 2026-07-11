@@ -76,5 +76,44 @@ include __DIR__ . '/partials/footer.php';
 
 <script src="js/scripts.js"></script>
 
+<!-- NOUVEAU : SYSTÈME DE RÉCUPÉRATION DU FORMULAIRE EN CAS D'ABANDON STRIPE -->
+<?php if (isset($_SESSION['reservation_form_data'])): ?>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const formData = <?= json_encode($_SESSION['reservation_form_data']) ?>;
+
+            for (const key in formData) {
+                // Gère les valeurs simples et les tableaux (ex: cases à cocher multiples)
+                const values = Array.isArray(formData[key]) ? formData[key] : [formData[key]];
+
+                values.forEach(val => {
+                    // Échapper les caractères spéciaux dans le nom (au cas où il y a des crochets [])
+                    const escapedKey = key.replace(/([\[\]])/g, '\\$1');
+                    const element = document.querySelector(`[name="${escapedKey}"]`);
+
+                    if (element) {
+                        // Si c'est un bouton radio
+                        if (element.type === 'radio') {
+                            const radio = document.querySelector(`input[name="${escapedKey}"][value="${val}"]`);
+                            if(radio) { radio.checked = true; radio.dispatchEvent(new Event('change', { bubbles: true })); }
+                        }
+                        // Si c'est une case à cocher
+                        else if (element.type === 'checkbox') {
+                            const cb = document.querySelector(`input[name="${escapedKey}"][value="${val}"]`);
+                            if(cb) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+                            else { element.checked = true; element.dispatchEvent(new Event('change', { bubbles: true })); }
+                        }
+                        // Pour le texte, les sélecteurs, et la date
+                        else {
+                            element.value = val;
+                            element.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+<?php endif; ?>
+
 </body>
 </html>

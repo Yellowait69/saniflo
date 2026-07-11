@@ -1,9 +1,14 @@
 <?php
 // admin/nav.php
 
-// Détection automatique de la page courante pour activer le menu
+// Détection automatique de la page courante et de la table pour activer le menu
 $page = basename($_SERVER['PHP_SELF']);
 $table = $_GET['table'] ?? '';
+
+// Variables pour garder les groupes "actifs" en surbrillance
+$isCatalogueOpen = in_array($table, ['products', 'product_categories', 'product_types', 'services', 'pricing']);
+$isPreuveSocialeOpen = in_array($table, ['projects', 'project_categories', 'intervention_types']) || $page === 'reviews.php';
+$isConfigOpen = in_array($table, ['site_content', 'settings', 'team', 'certifications', 'users']);
 ?>
 <header class="admin-header">
     <div class="admin-logo">
@@ -12,57 +17,51 @@ $table = $_GET['table'] ?? '';
 
     <nav class="admin-nav">
         <a href="dashboard.php" class="<?= $page === 'dashboard.php' ? 'active' : '' ?>">
-            <i class="fas fa-chart-line" style="margin-right:5px;"></i> Tableau de bord
+            <i class="fas fa-chart-line" style="margin-right:8px;"></i> Tableau de bord
         </a>
 
-        <a href="quotes.php" class="<?= ($page === 'quotes.php' || $page === 'quote_edit.php') ? 'active' : '' ?>">
-            <i class="fas fa-calendar-check" style="margin-right:5px;"></i> Rendez-vous
+        <a href="quotes.php" class="<?= in_array($page, ['quotes.php', 'quote_edit.php']) ? 'active' : '' ?>">
+            <i class="fas fa-calendar-check" style="margin-right:8px;"></i> Rendez-vous
         </a>
 
         <a href="messages.php" class="<?= $page === 'messages.php' ? 'active' : '' ?>">
-            <i class="fas fa-envelope" style="margin-right:5px;"></i> Messages
+            <i class="fas fa-envelope" style="margin-right:8px;"></i> Messages
         </a>
 
-        <a href="reviews.php" class="<?= $page === 'reviews.php' ? 'active' : '' ?>">
-            <i class="fas fa-star" style="margin-right:5px;"></i> Avis Clients
+        <div class="nav-group <?= $isCatalogueOpen ? 'active' : '' ?>">
+            <div class="nav-summary"><i class="fas fa-box" style="margin-right:8px;"></i> Catalogue</div>
+            <div class="nav-group-content">
+                <a href="content.php?table=products" class="<?= in_array($table, ['products', 'product_categories', 'product_types']) ? 'active' : '' ?>">Produits</a>
+                <a href="content.php?table=services" class="<?= $table === 'services' ? 'active' : '' ?>">Services</a>
+                <a href="content.php?table=pricing" class="<?= $table === 'pricing' ? 'active' : '' ?>">Tarifs</a>
+            </div>
+        </div>
+
+        <div class="nav-group <?= $isPreuveSocialeOpen ? 'active' : '' ?>">
+            <div class="nav-summary"><i class="fas fa-camera" style="margin-right:8px;"></i> Preuve Sociale</div>
+            <div class="nav-group-content">
+                <a href="reviews.php" class="<?= $page === 'reviews.php' ? 'active' : '' ?>">Avis Clients</a>
+                <a href="content.php?table=projects" class="<?= in_array($table, ['projects', 'project_categories', 'intervention_types']) ? 'active' : '' ?>">Portfolio (Chantiers)</a>
+            </div>
+        </div>
+
+        <div class="nav-group <?= $isConfigOpen ? 'active' : '' ?>">
+            <div class="nav-summary"><i class="fas fa-cogs" style="margin-right:8px;"></i> Configuration</div>
+            <div class="nav-group-content">
+                <a href="content.php?table=settings" class="<?= $table === 'settings' ? 'active' : '' ?>">Paramètres globaux</a>
+                <a href="content.php?table=site_content" class="<?= $table === 'site_content' ? 'active' : '' ?>">Textes du site</a>
+                <a href="content.php?table=team" class="<?= $table === 'team' ? 'active' : '' ?>">Équipe</a>
+                <a href="content.php?table=certifications" class="<?= $table === 'certifications' ? 'active' : '' ?>">Agréments</a>
+                <a href="content.php?table=users" class="<?= $table === 'users' ? 'active' : '' ?>">Administrateurs</a>
+            </div>
+        </div>
+
+        <a href="../" target="_blank" style="margin-top: 25px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px; opacity:0.8; font-size:0.9rem;">
+            <i class="fas fa-external-link-alt" style="margin-right:8px;"></i> Voir le site web
         </a>
 
-        <a href="content.php?table=site_content" class="<?= ($page === 'content.php' && $table === 'site_content') ? 'active' : '' ?>">
-            <i class="fas fa-file-alt" style="margin-right:5px;"></i> Textes du Site
-        </a>
-        <a href="content.php?table=settings" class="<?= ($page === 'content.php' && $table === 'settings') ? 'active' : '' ?>">
-            <i class="fas fa-cogs" style="margin-right:5px;"></i> Paramètres
-        </a>
-
-        <a href="content.php?table=services" class="<?= ($page === 'content.php' && $table === 'services') ? 'active' : '' ?>">Services</a>
-        <a href="content.php?table=pricing" class="<?= ($page === 'content.php' && $table === 'pricing') ? 'active' : '' ?>">Tarifs</a>
-        <a href="content.php?table=team" class="<?= ($page === 'content.php' && $table === 'team') ? 'active' : '' ?>">Équipe</a>
-        <a href="content.php?table=certifications" class="<?= ($page === 'content.php' && $table === 'certifications') ? 'active' : '' ?>">Agréments</a>
-
-        <a href="content.php?table=products" class="<?= ($page === 'content.php' && $table === 'products') ? 'active' : '' ?>">Produits</a>
-        <a href="content.php?table=product_categories" class="<?= ($page === 'content.php' && $table === 'product_categories') ? 'active' : '' ?>" style="font-size: 0.9em; opacity: 0.9;">
-            <i class="fas fa-tags" style="font-size:0.8em; margin-right:3px;"></i> Cat. Produits
-        </a>
-        <a href="content.php?table=product_types" class="<?= ($page === 'content.php' && $table === 'product_types') ? 'active' : '' ?>" style="font-size: 0.9em; opacity: 0.9;">
-            <i class="fas fa-wrench" style="font-size:0.8em; margin-right:3px;"></i> Types Produits
-        </a>
-
-        <a href="content.php?table=projects" class="<?= ($page === 'content.php' && $table === 'projects') ? 'active' : '' ?>">Portfolio</a>
-        <a href="content.php?table=project_categories" class="<?= ($page === 'content.php' && $table === 'project_categories') ? 'active' : '' ?>" style="font-size: 0.9em; opacity: 0.9;">
-            <i class="fas fa-tags" style="font-size:0.8em; margin-right:3px;"></i> Cat. Portfolio
-        </a>
-        <a href="content.php?table=intervention_types" class="<?= ($page === 'content.php' && $table === 'intervention_types') ? 'active' : '' ?>" style="font-size: 0.9em; opacity: 0.9;">
-            <i class="fas fa-wrench" style="font-size:0.8em; margin-right:3px;"></i> Types Portfolio
-        </a>
-
-        <a href="content.php?table=users" class="<?= ($page === 'content.php' && $table === 'users') ? 'active' : '' ?>">Admins</a>
-
-        <a href="../" target="_blank" style="margin-left: 50px; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 20px; border-bottom:none; opacity:0.9; font-size:0.9rem;">
-            Voir site <i class="fas fa-external-link-alt" style="font-size:0.8rem; margin-left:5px;"></i>
-        </a>
-
-        <a href="logout.php" class="logout-btn">
-            <i class="fas fa-sign-out-alt"></i> Déconnexion
+        <a href="logout.php" class="logout-btn" style="margin-top: 10px;">
+            <i class="fas fa-sign-out-alt" style="margin-right:8px;"></i> Déconnexion
         </a>
     </nav>
 </header>

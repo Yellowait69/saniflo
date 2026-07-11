@@ -74,7 +74,6 @@ class HomeController {
             $services = Service::getAll($this->pdo);
             $projects = Project::getAll($this->pdo);
 
-            // --- NOUVEAU : Récupération des DEUX NIVEAUX pour les filtres ---
             $productCategories = $this->pdo->query("SELECT * FROM product_categories ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
             $productTypes = $this->pdo->query("SELECT * FROM product_types ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -87,7 +86,6 @@ class HomeController {
                 $pricingData[$row['service_type']] = $row['price_htva'];
             }
 
-            // --- MODIFIÉ : Récupération des Produits avec Catégorie ET Type ---
             $sqlProd = "SELECT p.*, 
                                pc.name AS category_name, 
                                pc.slug AS category_slug,
@@ -190,6 +188,10 @@ class HomeController {
             if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
                 $message_status = '<div class="alert error" style="background:#ffebee; color:#c62828; padding:15px;">Erreur de sécurité CSRF.</div>';
             } else {
+
+                // === SAUVEGARDE DES DONNÉES EN SESSION POUR LE BOUTON RETOUR ===
+                $_SESSION['reservation_form_data'] = $_POST;
+
                 if (isset($_POST['appointment_date'])) {
                     try {
                         $dateRdv = $_POST['appointment_date'];
@@ -247,7 +249,6 @@ class HomeController {
                             $tauxTVA = $vat_regime / 100;
                         }
 
-                        // --- SÉCURITÉ : VÉRIFICATION DU PRIX CÔTÉ SERVEUR ---
                         $truePriceHtva = 0;
 
                         if ($service !== 'devis' && $service !== 'entretien_autre') {
@@ -261,16 +262,14 @@ class HomeController {
 
                         $fraisAdmin = 0;
 
-                        // On fait les calculs sur le VRAI prix de base HTVA de la base de données
+                        // Calcul sur le vrai prix de base HTVA
                         $montantTVA = $truePriceHtva * $tauxTVA;
                         $sousTotalTTC = $truePriceHtva + $montantTVA;
 
-                        // On applique les frais de 3% à la toute fin sur le TTC si paiement "after"
                         if ($paymentMethod === 'after') {
                             $fraisAdmin = $sousTotalTTC * 0.03;
                         }
 
-                        // Le total final que le client va payer
                         $priceTTC = $sousTotalTTC + $fraisAdmin;
 
                         $serviceMap = [
@@ -280,7 +279,6 @@ class HomeController {
                         ];
                         $serviceLabel = $serviceMap[$service] ?? ucwords(str_replace('_', ' ', $service));
 
-                        // Statuts
                         $initialStatus = ($paymentMethod === 'stripe') ? 'en_attente' : 'nouveau';
                         $initialPaymentStatus = ($paymentMethod === 'stripe') ? 'unpaid' : 'pending_on_site';
 
@@ -322,8 +320,6 @@ class HomeController {
                         ];
 
                         if ($paymentMethod === 'stripe' && $priceTTC > 0) {
-                            // === PAIEMENT EN LIGNE (STRIPE) MIS À JOUR ===
-                            // TODO: Remplacer la clé par $_ENV['STRIPE_SECRET_KEY'] en production
                             Stripe::setApiKey('sk_test_51SzZKnCHl8KtnRhXbncHLuJeJt8Oye1xLhdhxudVZCtcmOEu3YbkFX09WpIv60Iik4qpKcVghYyOU0Nd1zvqWfee00aruMK55x');
 
                             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
@@ -331,22 +327,23 @@ class HomeController {
                             $logoUrl = "$protocol://$host/img/logo-saniflo.png";
 
                             $checkout_session = Session::create([
-                                'payment_method_types' => ['card', 'bancontact'], // Bancontact ajouté
-                                'customer_email' => $emailClient, // Email pré-rempli
+                                'payment_method_types' => ['card', 'bancontact'],
+                                'customer_email' => $emailClient,
                                 'line_items' => [[
                                     'price_data' => [
                                         'currency' => 'eur',
                                         'product_data' => [
                                             'name' => 'Intervention : ' . $serviceLabel,
                                             'description' => "Le " . date('d/m/Y', strtotime($dateRdv)) . " à $heureRdv chez $prenom $nom.",
-                                            'images' => [$logoUrl] // Logo Saniflo affiché sur Stripe
+                                            'images' => [$logoUrl]
                                         ],
                                         'unit_amount' => (int)round($priceTTC * 100),
                                     ],
                                     'quantity' => 1,
                                 ]],
                                 'mode' => 'payment',
-                                'locale' => 'fr', // Page forcée en Français
+                                'expires_at' => time() + 1860, // === EXPIRATION EXACTE DANS 31 MINUTES ===
+                                'locale' => 'fr',
                                 'success_url' => "$protocol://$host/public/payment_success.php?session_id={CHECKOUT_SESSION_ID}",
                                 'cancel_url' => "$protocol://$host/index.php?page=reservation&msg=cancel",
                             ]);
@@ -360,14 +357,13 @@ class HomeController {
                         } else {
                             // === PAIEMENT SUR PLACE / APRÈS INTERVENTION / DEVIS GRATUIT ===
 
-                            // 1. Définition de l'adresse du chantier pour le GPS
+                            // Validation réussie, on vide la session pour ne plus pré-remplir
+                            unset($_SESSION['reservation_form_data']);
+
                             $chantierStr = $worksite_same ? "Identique à la facturation" : "$worksite_street " . ($worksite_box ? "Bte $worksite_box" : "") . ", $worksite_zip $worksite_city";
                             $gpsLocation = $worksite_same ? $fullAddress : $chantierStr;
-
-                            // 2. Info Société
                             $companyStr = $is_company ? "🏢 Société: " . ($_POST['company_name'] ?? 'N/A') . " (TVA: " . ($_POST['vat_number'] ?? 'N/A') . ")\n" : "";
 
-                            // 3. Construction hyper détaillée de la description
                             $googleDesc = "🛠️ DÉTAILS DE L'INTERVENTION\n";
                             $googleDesc .= "------------------------------------------------\n";
                             $googleDesc .= "Service : $serviceLabel\n";
@@ -400,16 +396,14 @@ class HomeController {
                                 $googleDesc .= "Statut : DEVIS / SUR PLACE\n";
                             }
 
-                            // 4. Envoi à l'agenda Google
                             $logic->addEvent([
                                 'summary' => "🔧 $serviceLabel - $nom $prenom",
-                                'location' => $gpsLocation, // On envoie l'adresse exacte du chantier pour le GPS
+                                'location' => $gpsLocation,
                                 'description' => $googleDesc,
                                 'date' => $dateRdv,
                                 'time' => $heureRdv
                             ]);
 
-                            // Envoi du mail hyper détaillé + copie Info
                             $this->sendReservationEmail($emailData);
 
                             $message_status = '<div class="alert success" style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px;">Rendez-vous confirmé ! Un email récapitulatif détaillé vous a été envoyé.</div>';
@@ -424,6 +418,83 @@ class HomeController {
 
         $certifications = Certification::getAll($this->pdo);
         require __DIR__ . '/../views/reservation.php';
+    }
+
+    // =================================================================
+    // CRON : GESTION DES ABANDONS STRIPE (5 mins & 30 mins)
+    // =================================================================
+    public function cron_abandoned_checkouts() {
+        Stripe::setApiKey('sk_test_51SzZKnCHl8KtnRhXbncHLuJeJt8Oye1xLhdhxudVZCtcmOEu3YbkFX09WpIv60Iik4qpKcVghYyOU0Nd1zvqWfee00aruMK55x');
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+        $host = $_SERVER['HTTP_HOST'];
+        $logoUrl = "$protocol://$host/img/logo-saniflo.png";
+
+        // 1. RELANCE APRÈS 5 MINUTES
+        $stmt5m = $this->pdo->prepare("
+            SELECT * FROM quote_requests 
+            WHERE payment_method = 'stripe' AND payment_status = 'unpaid' AND status = 'en_attente' AND reminder_sent = 0 
+            AND created_at <= DATE_SUB(NOW(), INTERVAL 5 MINUTE) AND created_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+        ");
+        $stmt5m->execute();
+        $toRemind = $stmt5m->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach($toRemind as $rdv) {
+            try {
+                $session = Session::retrieve($rdv['stripe_session_id']);
+                if ($session->payment_status === 'unpaid' && $session->status === 'open') {
+
+                    // Envoi du mail
+                    $to = $rdv['email'];
+                    $subject = "Votre rendez-vous Saniflo est en attente de paiement";
+                    $checkoutUrl = $session->url;
+                    $dateRdv = date('d/m/Y', strtotime($rdv['appointment_date']));
+                    $heureRdv = date('H:i', strtotime($rdv['appointment_date']));
+
+                    $body = "
+                    <html>
+                    <body style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; padding: 20px;'>
+                        <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 12px; border: 1px solid #ddd;'>
+                            <div style='text-align: center; margin-bottom: 20px;'><img src='$logoUrl' style='max-width: 180px;'></div>
+                            <h2 style='color: #004a99;'>Bonjour {$rdv['firstname']},</h2>
+                            <p>Vous avez commencé à réserver une intervention pour le <strong>$dateRdv à $heureRdv</strong>, mais le processus de paiement n'a pas été finalisé.</p>
+                            <p style='color:#e65100; font-weight:bold;'>Ce créneau vous est réservé pour encore 25 minutes !</p>
+                            <p>Pour confirmer votre rendez-vous, veuillez finaliser votre paiement sécurisé en cliquant sur le bouton ci-dessous :</p>
+                            <div style='text-align:center; margin: 30px 0;'>
+                                <a href='$checkoutUrl' style='display:inline-block; background: #28a745; color: white; padding: 14px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size:1.1rem;'>Finaliser mon paiement</a>
+                            </div>
+                        </div>
+                    </body>
+                    </html>";
+
+                    $headers = "MIME-Version: 1.0\r\nContent-type:text/html;charset=UTF-8\r\nFrom: Saniflo SRL <info@saniflo.be>\r\n";
+                    mail($to, $subject, $body, $headers);
+
+                    // Mettre à jour la BDD pour ne pas renvoyer le mail
+                    $this->pdo->prepare("UPDATE quote_requests SET reminder_sent = 1 WHERE id = ?")->execute([$rdv['id']]);
+                }
+            } catch(Exception $e) {}
+        }
+
+        // 2. ANNULATION APRÈS 30 MINUTES (LIBÉRATION DU CRÉNEAU)
+        $stmt30m = $this->pdo->prepare("
+            SELECT id, stripe_session_id FROM quote_requests 
+            WHERE payment_method = 'stripe' AND payment_status = 'unpaid' AND status = 'en_attente' 
+            AND created_at <= DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+        ");
+        $stmt30m->execute();
+        $toCancel = $stmt30m->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach($toCancel as $rdv) {
+            try {
+                $session = Session::retrieve($rdv['stripe_session_id']);
+                if ($session->status === 'open') {
+                    $session->expire(); // Annule de force la session Stripe
+                }
+            } catch(Exception $e) {}
+
+            // On marque en annulé. Le créneau redevient instantanément libre !
+            $this->pdo->prepare("UPDATE quote_requests SET status = 'annulé', payment_status = 'cancelled' WHERE id = ?")->execute([$rdv['id']]);
+        }
     }
 
     // =================================================================
@@ -445,13 +516,11 @@ class HomeController {
         $fraisAdminFormat = number_format($data['fraisAdmin'], 2, ',', ' ');
         $montantTTCFormat = number_format($data['totalTTC'], 2, ',', ' ');
 
-        // --- BLOC REMARQUES CLIENT ---
         $descriptionHTML = "";
         if (!empty($data['descUser'])) {
             $descriptionHTML = "<li style='margin-bottom:8px; margin-top:15px; padding-top:15px; border-top: 1px solid #ddd;'><strong>Vos remarques / description de la demande :</strong><br><i style='color:#555; display:block; margin-top:5px;'>" . nl2br(htmlspecialchars($data['descUser'])) . "</i></li>";
         }
 
-        // --- BLOC TARIFICATION ---
         $paymentInfoHTML = "";
         if ($data['truePriceHtva'] > 0) {
             if ($data['paymentMethod'] === 'after') {
@@ -459,44 +528,21 @@ class HomeController {
                 <div style='background: #e8f5e9; padding: 20px; border-radius: 8px; border: 1px solid #a5d6a7; margin-top: 20px; color: #1b5e20;'>
                     <h3 style='margin-top:0; margin-bottom: 15px; font-size: 1.1rem; border-bottom: 1px solid #a5d6a7; padding-bottom: 8px;'>Détails de la tarification</h3>
                     <table style='width: 100%; border-collapse: collapse; font-size: 0.95rem;'>
-                        <tr>
-                            <td style='padding: 6px 0;'>Montant HTVA :</td>
-                            <td style='text-align: right;'>$montantHTVAFormat €</td>
-                        </tr>
-                        <tr>
-                            <td style='padding: 6px 0;'>TVA ({$data['vatRate']}%) :</td>
-                            <td style='text-align: right;'>$montantTVAFormat €</td>
-                        </tr>
-                        <tr>
-                            <td style='padding: 6px 0;'>Frais administratifs de facturation (3%) :</td>
-                            <td style='text-align: right;'>$fraisAdminFormat €</td>
-                        </tr>
-                        <tr>
-                            <td style='padding: 12px 0 0 0; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; margin-top: 6px;'>Total à régler sur place :</td>
-                            <td style='text-align: right; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; padding-top: 12px;'>$montantTTCFormat €</td>
-                        </tr>
+                        <tr><td style='padding: 6px 0;'>Montant HTVA :</td><td style='text-align: right;'>$montantHTVAFormat €</td></tr>
+                        <tr><td style='padding: 6px 0;'>TVA ({$data['vatRate']}%) :</td><td style='text-align: right;'>$montantTVAFormat €</td></tr>
+                        <tr><td style='padding: 6px 0;'>Frais administratifs de facturation (3%) :</td><td style='text-align: right;'>$fraisAdminFormat €</td></tr>
+                        <tr><td style='padding: 12px 0 0 0; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; margin-top: 6px;'>Total à régler sur place :</td><td style='text-align: right; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; padding-top: 12px;'>$montantTTCFormat €</td></tr>
                     </table>
-                    <p style='font-size: 0.85rem; margin-bottom:0; margin-top: 15px; opacity: 0.9;'><i>Le technicien vous fournira les modalités de paiement sur place (Bancontact, Payconiq, Cash).</i></p>
                 </div>";
             } else {
                 $paymentInfoHTML = "
                 <div style='background: #e8f5e9; padding: 20px; border-radius: 8px; border: 1px solid #a5d6a7; margin-top: 20px; color: #1b5e20;'>
                     <h3 style='margin-top:0; margin-bottom: 15px; font-size: 1.1rem; border-bottom: 1px solid #a5d6a7; padding-bottom: 8px;'>Détails de la tarification</h3>
                     <table style='width: 100%; border-collapse: collapse; font-size: 0.95rem;'>
-                        <tr>
-                            <td style='padding: 6px 0;'>Montant HTVA :</td>
-                            <td style='text-align: right;'>$montantHTVAFormat €</td>
-                        </tr>
-                        <tr>
-                            <td style='padding: 6px 0;'>TVA ({$data['vatRate']}%) :</td>
-                            <td style='text-align: right;'>$montantTVAFormat €</td>
-                        </tr>
-                        <tr>
-                            <td style='padding: 12px 0 0 0; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; margin-top: 6px;'>Total payé en ligne :</td>
-                            <td style='text-align: right; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; padding-top: 12px;'>$montantTTCFormat €</td>
-                        </tr>
+                        <tr><td style='padding: 6px 0;'>Montant HTVA :</td><td style='text-align: right;'>$montantHTVAFormat €</td></tr>
+                        <tr><td style='padding: 6px 0;'>TVA ({$data['vatRate']}%) :</td><td style='text-align: right;'>$montantTVAFormat €</td></tr>
+                        <tr><td style='padding: 12px 0 0 0; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; margin-top: 6px;'>Total payé en ligne :</td><td style='text-align: right; font-weight: bold; font-size: 1.2rem; border-top: 1px solid #a5d6a7; padding-top: 12px;'>$montantTTCFormat €</td></tr>
                     </table>
-                    <p style='font-size: 0.85rem; margin-bottom:0; margin-top: 15px; opacity: 0.9;'><i>Intervention payée en ligne avec succès via Stripe.</i></p>
                 </div>";
             }
         }
@@ -507,10 +553,8 @@ class HomeController {
         <body style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; background-color: #f9f9f9; padding: 20px;'>
             <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 12px; border: 1px solid #ddd;'>
                 <div style='text-align: center; margin-bottom: 20px;'><img src='$logoUrl' style='max-width: 180px;'></div>
-                
                 <h2 style='color: #004a99;'>Bonjour {$data['prenom']},</h2>
                 <p>" . nl2br(htmlspecialchars($adminCustomText)) . "</p>
-                
                 <div style='background-color: #f4f7f6; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #004a99;'>
                     <h3 style='margin-top:0; color:#004a99;'>Récapitulatif de l'intervention</h3>
                     <ul style='list-style-type: none; padding-left: 0;'>
@@ -522,9 +566,7 @@ class HomeController {
                         $descriptionHTML
                     </ul>
                 </div>
-
                 $paymentInfoHTML
-                
                 <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;'>
                     <p style='color: #e65100; font-weight: bold;'>Un imprévu ?</p>
                     <p style='font-size: 0.95rem;'>Vous pouvez modifier ce rendez-vous jusqu'à <strong>7 jours avant</strong> la date prévue.</p>
@@ -534,9 +576,7 @@ class HomeController {
         </body>
         </html>";
 
-        $headers = "MIME-Version: 1.0\r\nContent-type:text/html;charset=UTF-8\r\nFrom: Saniflo SRL <info@saniflo.be>\r\n";
-        $headers .= "Bcc: info@saniflo.be\r\n";
-
+        $headers = "MIME-Version: 1.0\r\nContent-type:text/html;charset=UTF-8\r\nFrom: Saniflo SRL <info@saniflo.be>\r\nBcc: info@saniflo.be\r\n";
         mail($data['email'], $subject, $body, $headers);
     }
 

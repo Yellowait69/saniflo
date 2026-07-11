@@ -442,6 +442,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
     </div>
 
+    <?php if (in_array($currentTable, ['products', 'product_categories', 'product_types'])): ?>
+        <div style="margin-bottom: 25px; border-bottom: 2px solid #eaeaea; display: flex; gap: 20px;">
+            <a href="content.php?table=products" style="padding: 10px 5px; text-decoration: none; color: <?= $currentTable === 'products' ? 'var(--primary)' : '#6c757d' ?>; border-bottom: 3px solid <?= $currentTable === 'products' ? 'var(--primary)' : 'transparent' ?>; font-weight: <?= $currentTable === 'products' ? 'bold' : '500' ?>; transition: 0.2s;">
+                <i class="fas fa-box-open"></i> Liste des Produits
+            </a>
+            <a href="content.php?table=product_categories" style="padding: 10px 5px; text-decoration: none; color: <?= $currentTable === 'product_categories' ? 'var(--primary)' : '#6c757d' ?>; border-bottom: 3px solid <?= $currentTable === 'product_categories' ? 'var(--primary)' : 'transparent' ?>; font-weight: <?= $currentTable === 'product_categories' ? 'bold' : '500' ?>; transition: 0.2s;">
+                <i class="fas fa-tags"></i> Catégories (Éléments)
+            </a>
+            <a href="content.php?table=product_types" style="padding: 10px 5px; text-decoration: none; color: <?= $currentTable === 'product_types' ? 'var(--primary)' : '#6c757d' ?>; border-bottom: 3px solid <?= $currentTable === 'product_types' ? 'var(--primary)' : 'transparent' ?>; font-weight: <?= $currentTable === 'product_types' ? 'bold' : '500' ?>; transition: 0.2s;">
+                <i class="fas fa-wrench"></i> Types (Domaines)
+            </a>
+        </div>
+    <?php endif; ?>
+
+    <?php if (in_array($currentTable, ['projects', 'project_categories', 'intervention_types'])): ?>
+        <div style="margin-bottom: 25px; border-bottom: 2px solid #eaeaea; display: flex; gap: 20px;">
+            <a href="content.php?table=projects" style="padding: 10px 5px; text-decoration: none; color: <?= $currentTable === 'projects' ? 'var(--primary)' : '#6c757d' ?>; border-bottom: 3px solid <?= $currentTable === 'projects' ? 'var(--primary)' : 'transparent' ?>; font-weight: <?= $currentTable === 'projects' ? 'bold' : '500' ?>; transition: 0.2s;">
+                <i class="fas fa-camera-retro"></i> Réalisations (Chantiers)
+            </a>
+            <a href="content.php?table=project_categories" style="padding: 10px 5px; text-decoration: none; color: <?= $currentTable === 'project_categories' ? 'var(--primary)' : '#6c757d' ?>; border-bottom: 3px solid <?= $currentTable === 'project_categories' ? 'var(--primary)' : 'transparent' ?>; font-weight: <?= $currentTable === 'project_categories' ? 'bold' : '500' ?>; transition: 0.2s;">
+                <i class="fas fa-tags"></i> Catégories (Éléments)
+            </a>
+            <a href="content.php?table=intervention_types" style="padding: 10px 5px; text-decoration: none; color: <?= $currentTable === 'intervention_types' ? 'var(--primary)' : '#6c757d' ?>; border-bottom: 3px solid <?= $currentTable === 'intervention_types' ? 'var(--primary)' : 'transparent' ?>; font-weight: <?= $currentTable === 'intervention_types' ? 'bold' : '500' ?>; transition: 0.2s;">
+                <i class="fas fa-wrench"></i> Types (Domaines)
+            </a>
+        </div>
+    <?php endif; ?>
     <?php if($msg): ?>
         <div style="background: <?= strpos($msg, 'Erreur') !== false ? '#f8d7da' : '#d4edda' ?>;
                 color: <?= strpos($msg, 'Erreur') !== false ? '#721c24' : '#155724' ?>;

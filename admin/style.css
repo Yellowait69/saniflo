@@ -127,11 +127,16 @@ ul { list-style: none; padding: 0; margin: 0; }
     letter-spacing: 1px;
 }
 
-.admin-nav { display: flex; align-items: center; height: 100%; }
+.admin-nav {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
 
-.admin-nav a {
+/* Liens simples de la navbar */
+.admin-nav > a {
     color: rgba(255,255,255,0.8);
-    margin-left: 25px;
+    margin-left: 20px;
     font-size: 0.9rem;
     font-weight: 500;
     height: 70px;
@@ -140,10 +145,121 @@ ul { list-style: none; padding: 0; margin: 0; }
     border-bottom: 3px solid transparent;
 }
 
-.admin-nav a:hover, .admin-nav a.active {
+.admin-nav > a:hover, .admin-nav > a.active {
     color: white;
     border-bottom-color: var(--secondary);
     background: rgba(255,255,255,0.05);
+}
+
+/* =========================================
+   MENUS DÉROULANTS AU SURVOL (HOVER)
+   ========================================= */
+.nav-group {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.nav-summary {
+    color: rgba(255,255,255,0.8);
+    margin-left: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    height: 70px;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: var(--transition);
+}
+
+/* Changement de couleur quand on survole le groupe global */
+.nav-group:hover .nav-summary,
+.nav-group.active .nav-summary {
+    color: white;
+    border-bottom-color: var(--secondary);
+    background: rgba(255,255,255,0.05);
+}
+
+/* Flèche FontAwesome personnalisée */
+.nav-summary::after {
+    content: '\f078'; /* fa-chevron-down */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    margin-left: 8px;
+    font-size: 0.75em;
+    transition: transform 0.3s ease;
+    opacity: 0.8;
+}
+
+/* Rotation de la flèche au survol */
+.nav-group:hover .nav-summary::after {
+    transform: rotate(180deg);
+}
+
+/* --- Contenu du menu déroulant --- */
+.nav-group-content {
+    position: absolute;
+    top: 70px; /* S'aligne parfaitement sous la navbar */
+    left: 20px;
+    background: var(--primary-light);
+    min-width: 230px;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    border-radius: 0 0 var(--radius) var(--radius);
+    overflow: hidden;
+    z-index: 1000;
+
+    /* Masqué par défaut avec animation */
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(15px); /* Décale vers le bas par défaut */
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none; /* Empêche les clics involontaires quand masqué */
+}
+
+/* Apparition MAGIQUE au survol */
+.nav-group:hover .nav-group-content {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0); /* Remonte à sa place */
+    pointer-events: auto; /* Réactive les clics */
+}
+
+/* Liens à l'intérieur du menu déroulant */
+.nav-group-content a {
+    color: rgba(255,255,255,0.9);
+    padding: 12px 20px;
+    font-size: 0.85rem;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    transition: var(--transition);
+    height: auto !important;
+    margin-left: 0 !important;
+}
+
+.nav-group-content a:last-child {
+    border-bottom: none !important;
+}
+
+.nav-group-content a:hover, .nav-group-content a.active {
+    background: rgba(0, 0, 0, 0.15);
+    color: white;
+    border-left: 4px solid var(--secondary) !important;
+    padding-left: 16px; /* Compense la bordure */
+}
+
+/* Boutons de droite (Site / Logout) */
+.admin-nav > a[target="_blank"] {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: none !important;
+    border-left: 1px solid rgba(255,255,255,0.2);
+    padding-left: 20px;
+    margin-left: 30px !important;
 }
 
 .logout-btn {
@@ -152,7 +268,8 @@ ul { list-style: none; padding: 0; margin: 0; }
     padding: 8px 20px !important;
     border-radius: 50px;
     border-bottom: none !important;
-    margin-left: 30px !important;
+    margin-left: 20px !important;
+    margin-top: 0 !important;
 }
 
 .logout-btn:hover { background: var(--danger) !important; }
@@ -351,7 +468,7 @@ tr:hover td { background: #fbfbfb; }
 ::-webkit-scrollbar-thumb:hover { background: #bbb; }
 
 /* Responsive Mobile */
-@media (max-width: 768px) {
+@media (max-width: 992px) {
     .admin-header {
         flex-direction: column;
         height: auto;
@@ -365,13 +482,32 @@ tr:hover td { background: #fbfbfb; }
         gap: 10px;
     }
 
-    .admin-nav a {
+    .admin-nav > a, .nav-summary {
         margin: 0 5px;
         height: 40px;
-        font-size: 0.8rem;
+        font-size: 0.85rem;
+        padding: 0 10px;
+    }
+
+    /* Le menu déroulant devient flottant et centré sur mobile */
+    .nav-group-content {
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%) translateY(15px); /* Caché centré */
+        width: 250px;
+        border-radius: var(--radius);
+    }
+
+    .nav-group:hover .nav-group-content {
+        transform: translateX(-50%) translateY(0); /* Apparition centrée */
+    }
+
+    .admin-nav > a[target="_blank"] {
+        border-left: none !important;
+        margin-left: 0 !important;
+        padding-left: 0 !important;
     }
 
     .dashboard-cards { grid-template-columns: 1fr; }
-
     .crud-form { padding: 20px; }
 }
