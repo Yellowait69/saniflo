@@ -60,8 +60,9 @@ class HomeController {
         $settings = $this->getSettings();
         $site_content = $this->getSiteContent();
 
-        // Initialisation du tableau des tarifs
+        // Initialisation des variables
         $pricingData = [];
+        $products = [];
 
         try {
             $certifications = Certification::getAll($this->pdo);
@@ -75,8 +76,12 @@ class HomeController {
                 $pricingData[$row['service_type']] = $row['price_htva'];
             }
 
+            // Récupération du Catalogue Produits
+            $stmtProd = $this->pdo->query("SELECT * FROM products ORDER BY display_order ASC, id DESC");
+            $products = $stmtProd->fetchAll(PDO::FETCH_ASSOC);
+
         } catch (Exception $e) {
-            $certifications = $teamMembers = $services = $projects = [];
+            $certifications = $teamMembers = $services = $projects = $products = [];
         }
 
         require __DIR__ . '/../views/home.php';

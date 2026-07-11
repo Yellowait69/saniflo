@@ -69,7 +69,7 @@
 <body>
 
 <?php
-// NB: Les variables $settings, $site_content, $pricingData, $certifications, $teamMembers, $services et $projects
+// NB: Les variables $settings, $site_content, $pricingData, $certifications, $teamMembers, $services, $products et $projects
 // sont automatiquement transmises ici depuis la méthode index() du HomeController.
 
 // 1. En-tête (Logo, Nav, Hero - Textes modifiés dynamiquement via $site_content)
@@ -81,16 +81,19 @@ include __DIR__ . '/partials/about.php';
 // 3. Services (Boucle sur les services de la base de données)
 include __DIR__ . '/partials/services.php';
 
-// 4. Portfolio / Réalisations (Boucle sur les projets)
+// 4. Catalogue Produits (Boucle sur les produits)
+include __DIR__ . '/partials/products.php';
+
+// 5. Portfolio / Réalisations (Boucle sur les projets)
 include __DIR__ . '/partials/portfolio.php';
 
-// 5. Avis clients
+// 6. Avis clients
 include __DIR__ . '/partials/reviews.php';
 
 // Note : Le formulaire de contact a été déplacé sur la page dédiée (views/contact_page.php).
 // La page d'accueil est désormais 100% allégée et orientée "Vitrine".
 
-// 6. Pied de page
+// 7. Pied de page
 include __DIR__ . '/partials/footer.php';
 ?>
 

@@ -38,6 +38,7 @@ $table = $_GET['table'] ?? '';
         <a href="content.php?table=pricing" class="<?= ($page === 'content.php' && $table === 'pricing') ? 'active' : '' ?>">Tarifs</a>
         <a href="content.php?table=team" class="<?= ($page === 'content.php' && $table === 'team') ? 'active' : '' ?>">Équipe</a>
         <a href="content.php?table=certifications" class="<?= ($page === 'content.php' && $table === 'certifications') ? 'active' : '' ?>">Agréments</a>
+        <a href="content.php?table=products" class="<?= ($page === 'content.php' && $table === 'products') ? 'active' : '' ?>">Produits</a>
         <a href="content.php?table=projects" class="<?= ($page === 'content.php' && $table === 'projects') ? 'active' : '' ?>">Portfolio</a>
         <a href="content.php?table=users" class="<?= ($page === 'content.php' && $table === 'users') ? 'active' : '' ?>">Admins</a>
 
