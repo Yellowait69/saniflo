@@ -1,11 +1,8 @@
 <?php
-// Requête pour récupérer les produits triés par ordre d'affichage (à décommenter selon votre contrôleur)
-// $products = $pdo->query("SELECT * FROM products ORDER BY display_order ASC, id DESC")->fetchAll(PDO::FETCH_ASSOC);
-
-// Sécurité anti-erreur si la variable n'existe pas encore
-if (!isset($products)) {
-    $products = [];
-}
+// Sécurité anti-erreur si les variables n'existent pas encore
+if (!isset($products)) $products = [];
+if (!isset($productCategories)) $productCategories = [];
+if (!isset($productTypes)) $productTypes = [];
 ?>
 
 <section id="produits" class="products-section">
@@ -15,26 +12,34 @@ if (!isset($products)) {
             <p>Saniflo vous propose et installe les équipements des plus grandes marques pour garantir votre confort et la durabilité de vos installations.</p>
         </div>
 
-        <div class="product-filters">
-            <button class="filter-btn active" data-filter="all"><i class="fas fa-th-large"></i> Tous nos produits</button>
-            <button class="filter-btn" data-filter="chaudiere"><i class="fas fa-fire"></i> Chaudières</button>
-            <button class="filter-btn" data-filter="pompe"><i class="fas fa-wind"></i> Pompes à chaleur</button>
-            <button class="filter-btn" data-filter="adoucisseur"><i class="fas fa-tint"></i> Adoucisseurs</button>
-            <button class="filter-btn" data-filter="sanitaire"><i class="fas fa-bath"></i> Sanitaire</button>
+        <div class="product-filters" id="productTypeFilters">
+            <button class="filter-btn-type active" data-type="all">
+                <i class="fas fa-th-large"></i> Tous nos domaines
+            </button>
+            <?php foreach ($productTypes as $type): ?>
+                <button class="filter-btn-type" data-type="<?= htmlspecialchars($type['slug']) ?>">
+                    <?= htmlspecialchars($type['name']) ?>
+                </button>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="product-filters sub-filters-container" id="productCatFilters" style="margin-top: -30px; margin-bottom: 40px; gap: 8px;">
+            <button class="filter-btn-cat active" data-cat="all">Toutes les catégories</button>
+            <?php foreach ($productCategories as $cat): ?>
+                <button class="filter-btn-cat" data-cat="<?= htmlspecialchars($cat['slug']) ?>">
+                    <?= htmlspecialchars($cat['name']) ?>
+                </button>
+            <?php endforeach; ?>
         </div>
 
         <?php if (!empty($products)): ?>
             <div class="product-grid" id="productGrid">
                 <?php foreach ($products as $prod):
-                    // Classification pour les filtres
-                    $catLower = strtolower(trim($prod['category'] ?? ''));
-                    $filterClass = 'autre';
-                    if (strpos($catLower, 'chaudière') !== false || strpos($catLower, 'chaudiere') !== false) $filterClass = 'chaudiere';
-                    elseif (strpos($catLower, 'pompe') !== false || strpos($catLower, 'pac') !== false) $filterClass = 'pompe';
-                    elseif (strpos($catLower, 'adoucisseur') !== false) $filterClass = 'adoucisseur';
-                    elseif (strpos($catLower, 'sanitaire') !== false || strpos($catLower, 'boiler') !== false) $filterClass = 'sanitaire';
+                    // Extraction des slugs
+                    $catSlug = htmlspecialchars($prod['category_slug'] ?? 'autre');
+                    $typeSlug = htmlspecialchars($prod['type_slug'] ?? 'autre');
 
-                    // Formatage des points forts (séparés par des tirets) pour le JS
+                    // Formatage des points forts
                     $featuresRaw = $prod['features'] ?? '';
                     $featuresArray = array_filter(array_map('trim', explode('-', $featuresRaw)));
                     $featuresJson = htmlspecialchars(json_encode(array_values($featuresArray)), ENT_QUOTES, 'UTF-8');
@@ -43,10 +48,13 @@ if (!isset($products)) {
                     $imgUrl = !empty($prod['image_url']) ? htmlspecialchars($prod['image_url']) : 'img/no-image.png';
                     ?>
 
-                    <div class="product-card filter-item <?= $filterClass ?>"
+                    <div class="product-card filter-item"
+                         data-type-slug="<?= $typeSlug ?>"
+                         data-cat-slug="<?= $catSlug ?>"
                          data-name="<?= htmlspecialchars($prod['name'], ENT_QUOTES) ?>"
                          data-brand="<?= htmlspecialchars($prod['brand'] ?? '', ENT_QUOTES) ?>"
-                         data-cat="<?= htmlspecialchars($prod['category'], ENT_QUOTES) ?>"
+                         data-cat="<?= htmlspecialchars($prod['category_name'] ?? '', ENT_QUOTES) ?>"
+                         data-type="<?= htmlspecialchars($prod['type_name'] ?? '', ENT_QUOTES) ?>"
                          data-desc="<?= htmlspecialchars($prod['description'], ENT_QUOTES) ?>"
                          data-img="<?= $imgUrl ?>"
                          data-pdf="<?= htmlspecialchars($prod['brochure_url'] ?? '') ?>"
@@ -59,6 +67,12 @@ if (!isset($products)) {
                                 <span class="product-brand-badge"><?= htmlspecialchars($prod['brand']) ?></span>
                             <?php endif; ?>
 
+                            <?php if(!empty($prod['type_name'])): ?>
+                                <span class="portfolio-badge badge-type badge-secondary" style="position: absolute; top: 15px; right: 15px; background: rgba(0, 51, 102, 0.95); padding: 5px 14px; border-radius: 30px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: white; z-index: 2; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                                    <i class="fas fa-tag"></i> <?= htmlspecialchars($prod['type_name']) ?>
+                                </span>
+                            <?php endif; ?>
+
                             <div class="product-overlay">
                                 <i class="fas fa-search-plus"></i>
                                 <span>Voir la fiche</span>
@@ -66,7 +80,7 @@ if (!isset($products)) {
                         </div>
 
                         <div class="product-content">
-                            <span class="product-cat-text"><?= htmlspecialchars($prod['category']) ?></span>
+                            <span class="product-cat-text"><?= htmlspecialchars($prod['category_name'] ?? '') ?></span>
                             <h3 class="product-title"><?= htmlspecialchars($prod['name']) ?></h3>
                             <button class="btn-product-details">Découvrir ce produit</button>
                         </div>
@@ -101,7 +115,11 @@ if (!isset($products)) {
                 </div>
 
                 <div class="modal-info" style="background: #fcfcfc;">
-                    <span id="pModalCat" class="product-cat-text" style="display: inline-block; margin-bottom: 10px; background: #eef5fc; padding: 4px 12px; border-radius: 20px;"></span>
+                    <div>
+                        <span id="pModalCat" class="product-cat-text" style="display: inline-block; margin-bottom: 10px; background: #eef5fc; padding: 4px 12px; border-radius: 20px;"></span>
+                        <span id="pModalType" style="display: none; background: rgba(0, 51, 102, 0.95); padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: white; margin-left: 10px; vertical-align: top;"><i class="fas fa-tag"></i> <span class="text"></span></span>
+                    </div>
+
                     <h3 id="pModalName" class="modal-title" style="color: #003366; font-size: 2.2rem; margin-bottom: 5px; font-weight: 800;"></h3>
                     <h4 id="pModalBrand" style="color: #0056b3; font-weight: 700; margin-top: 0; margin-bottom: 25px; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px;"></h4>
 
@@ -131,17 +149,21 @@ if (!isset($products)) {
 
     <style>
         .products-section { background-color: #f8f9fa; padding: 90px 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-
         .section-title { text-align: center; margin-bottom: 60px; }
         .section-title h2 { font-size: 2.5rem; color: #003366; font-weight: 700; margin-bottom: 15px; position: relative; display: inline-block; }
         .section-title h2::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); width: 60px; height: 4px; background: #0056b3; border-radius: 2px; }
         .section-title p { color: #6c757d; font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
 
-        /* Boutons Filtres */
+        /* Filtres Principaux */
         .product-filters { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-bottom: 50px; }
-        .product-filters .filter-btn { background: #fff; border: 2px solid #0056b3; color: #0056b3; padding: 10px 22px; border-radius: 50px; cursor: pointer; font-weight: 600; font-size: 0.95rem; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .product-filters .filter-btn:hover { background: #eef5fc; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0, 86, 179, 0.1); }
-        .product-filters .filter-btn.active { background: #0056b3; border-color: #0056b3; color: #ffffff; box-shadow: 0 4px 12px rgba(0, 86, 179, 0.3); }
+        .filter-btn-type { background: #fff; border: 2px solid #0056b3; color: #0056b3; padding: 10px 22px; border-radius: 50px; cursor: pointer; font-weight: 600; font-size: 0.95rem; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .filter-btn-type:hover { background: #eef5fc; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0, 86, 179, 0.1); }
+        .filter-btn-type.active { background: #0056b3; border-color: #0056b3; color: #ffffff; box-shadow: 0 4px 12px rgba(0, 86, 179, 0.3); }
+
+        /* Sous-filtres (Catégories) */
+        .filter-btn-cat { background: #eef5fc; border: 1px solid #cce5ff; color: #0056b3; padding: 6px 18px; border-radius: 30px; cursor: pointer; font-weight: 500; font-size: 0.85rem; transition: all 0.2s ease; }
+        .filter-btn-cat:hover { background: #ddecff; border-color: #b8daff; }
+        .filter-btn-cat.active { background: #0056b3; color: #ffffff; border-color: #0056b3; font-weight: 600; }
 
         /* Grille Produits */
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 35px; }
@@ -198,27 +220,34 @@ if (!isset($products)) {
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- GESTION DES FILTRES & VOIR PLUS ---
-            const filterBtns = document.querySelectorAll('.product-filters .filter-btn');
-            const productItems = Array.from(document.querySelectorAll('.product-grid .filter-item'));
+            // --- GESTION DU FILTRAGE À DEUX NIVEAUX (PRODUITS) ---
+            const typeBtns = document.querySelectorAll('#productTypeFilters .filter-btn-type');
+            const catBtns = document.querySelectorAll('#productCatFilters .filter-btn-cat');
+            const productItems = Array.from(document.querySelectorAll('#productGrid .product-card'));
             const loadMoreBtn = document.getElementById('loadMoreProdBtn');
+            const catContainer = document.getElementById('productCatFilters');
 
-            let currentFilter = 'all';
-            let globalLimit = 8; // Affiche 8 produits par défaut
+            let currentType = 'all';
+            let currentCat = 'all';
+            let globalLimit = 8; // On affiche 8 cartes par défaut
 
-            function updateProductDisplay() {
+            function updateDisplay() {
                 let totalVisible = 0;
                 let hiddenMatching = 0;
 
                 productItems.forEach(item => {
-                    let matches = (currentFilter === 'all' || item.classList.contains(currentFilter));
+                    let itemType = item.getAttribute('data-type-slug');
+                    let itemCat = item.getAttribute('data-cat-slug');
 
-                    if (matches) {
+                    let matchType = (currentType === 'all' || itemType === currentType);
+                    let matchCat = (currentCat === 'all' || itemCat === currentCat);
+
+                    if (matchType && matchCat) {
                         if (totalVisible < globalLimit) {
                             if (item.style.display !== 'flex') {
                                 item.style.display = 'flex';
                                 item.style.animation = 'none';
-                                item.offsetHeight; // Trigger reflow
+                                item.offsetHeight; // Reflow
                                 item.style.animation = 'fadeIn 0.5s ease forwards';
                             }
                             totalVisible++;
@@ -236,23 +265,75 @@ if (!isset($products)) {
                 }
             }
 
-            filterBtns.forEach(btn => {
+            // Événement clic sur le TYPE (Domaine)
+            typeBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
-                    filterBtns.forEach(b => b.classList.remove('active'));
+                    typeBtns.forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
-                    currentFilter = btn.getAttribute('data-filter');
+                    currentType = btn.getAttribute('data-type');
+
+                    // Déduire quelles catégories de produits sont disponibles pour ce type
+                    let validCats = new Set();
+                    productItems.forEach(item => {
+                        if (currentType === 'all' || item.getAttribute('data-type-slug') === currentType) {
+                            validCats.add(item.getAttribute('data-cat-slug'));
+                        }
+                    });
+
+                    // Afficher/Cacher les boutons de catégories
+                    let catsAvailable = 0;
+                    catBtns.forEach(cBtn => {
+                        let cSlug = cBtn.getAttribute('data-cat');
+                        if (cSlug === 'all') return;
+
+                        if (validCats.has(cSlug)) {
+                            cBtn.style.display = 'inline-flex';
+                            catsAvailable++;
+                        } else {
+                            cBtn.style.display = 'none';
+                        }
+                    });
+
+                    // Affichage de la ligne secondaire uniquement si pertinent
+                    if(currentType !== 'all' && catsAvailable > 0) {
+                        catContainer.style.display = 'flex';
+                    } else {
+                        catContainer.style.display = 'none';
+                    }
+
+                    // Reset Catégorie
+                    catBtns.forEach(b => b.classList.remove('active'));
+                    document.querySelector('#productCatFilters .filter-btn-cat[data-cat="all"]').classList.add('active');
+                    currentCat = 'all';
+
                     globalLimit = 8;
-                    updateProductDisplay();
+                    updateDisplay();
                 });
             });
 
+            // Événement clic sur la CATÉGORIE (Élément)
+            catBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    catBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentCat = btn.getAttribute('data-cat');
+
+                    globalLimit = 8;
+                    updateDisplay();
+                });
+            });
+
+            // Bouton Voir Plus
             if (loadMoreBtn) {
                 loadMoreBtn.addEventListener('click', () => {
                     globalLimit += 8;
-                    updateProductDisplay();
+                    updateDisplay();
                 });
             }
-            updateProductDisplay();
+
+            // Init au chargement
+            catContainer.style.display = 'none';
+            updateDisplay();
 
             // --- GESTION DE LA MODALE PRODUIT ---
             const modal = document.getElementById('productModal');
@@ -261,6 +342,7 @@ if (!isset($products)) {
             const mName = document.getElementById('pModalName');
             const mBrand = document.getElementById('pModalBrand');
             const mCat = document.getElementById('pModalCat');
+            const mType = document.getElementById('pModalType');
             const mDesc = document.getElementById('pModalDesc');
             const mImg = document.getElementById('pModalImg');
             const mPdf = document.getElementById('pModalPdf');
@@ -270,25 +352,29 @@ if (!isset($products)) {
 
             productItems.forEach(card => {
                 card.addEventListener('click', () => {
-                    // Récupération des données
                     mName.textContent = card.getAttribute('data-name');
                     mBrand.textContent = card.getAttribute('data-brand');
                     mCat.textContent = card.getAttribute('data-cat');
                     mDesc.textContent = card.getAttribute('data-desc');
 
-                    // L'URL de l'image est générée en PHP, on la lit directement
+                    const typeName = card.getAttribute('data-type');
+                    if(typeName) {
+                        mType.querySelector('.text').textContent = typeName;
+                        mType.style.display = 'inline-block';
+                    } else {
+                        mType.style.display = 'none';
+                    }
+
                     mImg.src = card.getAttribute('data-img');
 
-                    // Gestion du PDF
                     const pdfUrl = card.getAttribute('data-pdf');
                     if (pdfUrl) {
-                        mPdf.href = pdfUrl; // Lien direct
+                        mPdf.href = pdfUrl;
                         mPdf.style.display = 'inline-flex';
                     } else {
                         mPdf.style.display = 'none';
                     }
 
-                    // Gestion de la liste des points forts (JSON)
                     const featuresRaw = card.getAttribute('data-features');
                     const features = featuresRaw ? JSON.parse(featuresRaw) : [];
 
@@ -304,13 +390,11 @@ if (!isset($products)) {
                         mFeatContainer.style.display = 'none';
                     }
 
-                    // Afficher la modale
                     modal.classList.add('show');
                     document.body.style.overflow = 'hidden';
                 });
             });
 
-            // Fonctions de fermeture
             const closePModal = () => {
                 modal.classList.remove('show');
                 document.body.style.overflow = 'auto';

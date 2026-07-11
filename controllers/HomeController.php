@@ -63,6 +63,10 @@ class HomeController {
         // Initialisation des variables
         $pricingData = [];
         $products = [];
+        $productCategories = [];
+        $productTypes = [];
+        $projectCategories = [];
+        $interventionTypes = [];
 
         try {
             $certifications = Certification::getAll($this->pdo);
@@ -70,18 +74,35 @@ class HomeController {
             $services = Service::getAll($this->pdo);
             $projects = Project::getAll($this->pdo);
 
+            // --- NOUVEAU : Récupération des DEUX NIVEAUX pour les filtres ---
+            $productCategories = $this->pdo->query("SELECT * FROM product_categories ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+            $productTypes = $this->pdo->query("SELECT * FROM product_types ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+            $projectCategories = $this->pdo->query("SELECT * FROM project_categories ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+            $interventionTypes = $this->pdo->query("SELECT * FROM intervention_types ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+
             // Récupérer les tarifs depuis la table 'pricing' pour dynamiser le Wizard
             $stmt = $this->pdo->query("SELECT service_type, price_htva FROM pricing");
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $pricingData[$row['service_type']] = $row['price_htva'];
             }
 
-            // Récupération du Catalogue Produits
-            $stmtProd = $this->pdo->query("SELECT * FROM products ORDER BY display_order ASC, id DESC");
+            // --- MODIFIÉ : Récupération des Produits avec Catégorie ET Type ---
+            $sqlProd = "SELECT p.*, 
+                               pc.name AS category_name, 
+                               pc.slug AS category_slug,
+                               pt.name AS type_name,
+                               pt.slug AS type_slug
+                        FROM products p 
+                        LEFT JOIN product_categories pc ON p.category_id = pc.id 
+                        LEFT JOIN product_types pt ON p.type_id = pt.id
+                        ORDER BY p.display_order ASC, p.id DESC";
+            $stmtProd = $this->pdo->query($sqlProd);
             $products = $stmtProd->fetchAll(PDO::FETCH_ASSOC);
 
         } catch (Exception $e) {
             $certifications = $teamMembers = $services = $projects = $products = [];
+            $productCategories = $projectCategories = $productTypes = $interventionTypes = [];
         }
 
         require __DIR__ . '/../views/home.php';

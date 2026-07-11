@@ -13,7 +13,7 @@
         letter-spacing: 2px;
         z-index: 99;
         white-space: nowrap;
-        background: var(--accent-yellow); /* Assurez-vous d'avoir un fond pour le badge */
+        background: var(--accent-yellow);
         color: var(--primary-dark);
         border-radius: 30px;
     }
@@ -83,7 +83,7 @@
     /* --- ADAPTATION POUR MOBILES ET TABLETTES --- */
     @media (max-width: 768px) {
         .hero-badge-date {
-            position: relative; /* On annule l'absolu qui déborde sur mobile */
+            position: relative;
             top: 0;
             left: 0;
             transform: none;
@@ -94,7 +94,7 @@
         }
 
         .hero-h1-title {
-            margin-top: 0; /* Plus besoin de marge car le badge n'est plus en position absolue */
+            margin-top: 0;
             font-size: 2rem;
             line-height: 1.2;
         }
@@ -124,9 +124,10 @@
         <a href="index.php"><img src="img/logo-saniflo.png" alt="Saniflo SRL Logo"></a>
     </div>
     <ul class="nav-links">
-        <li><a href="#">Accueil</a></li>
+        <li><a href="index.php#accueil">Accueil</a></li>
         <li><a href="index.php#apropos">À Propos</a></li>
         <li><a href="index.php#services">Services</a></li>
+        <li><a href="index.php#produits">Produits</a></li>
         <li><a href="index.php#realisations">Réalisations</a></li>
         <li><a href="tel:0495501717" class="btn-nav" style="background-color: var(--accent-yellow); color: var(--primary-dark) !important;">
                 <i class="fas fa-phone-alt"></i> 0495 50 17 17</a>

@@ -73,6 +73,44 @@ $tablesConfig = [
             'number' => ['label' => 'Numéro', 'type' => 'text']
         ]
     ],
+    // --- NOUVELLES TABLES DE CATÉGORIES ET TYPES ---
+    'product_types' => [
+        'name' => 'Types de Produits (Domaines)',
+        'pk' => 'id',
+        'can_add' => true, 'can_delete' => true,
+        'fields' => [
+            'name' => ['label' => 'Nom du type (ex: Sanitaire, Chauffage)', 'type' => 'text', 'required' => true],
+            'slug' => ['label' => 'Slug CSS (Identifiant sans espace, ex: sanitaire)', 'type' => 'text', 'required' => true]
+        ]
+    ],
+    'product_categories' => [
+        'name' => 'Catégories de Produits (Éléments)',
+        'pk' => 'id',
+        'can_add' => true, 'can_delete' => true,
+        'fields' => [
+            'name' => ['label' => 'Nom de la catégorie (ex: Robinet, Chaudière)', 'type' => 'text', 'required' => true],
+            'slug' => ['label' => 'Slug CSS (Identifiant sans espace, ex: robinet)', 'type' => 'text', 'required' => true]
+        ]
+    ],
+    'intervention_types' => [
+        'name' => 'Types d\'intervention (Portfolio)',
+        'pk' => 'id',
+        'can_add' => true, 'can_delete' => true,
+        'fields' => [
+            'name' => ['label' => 'Nom du type (ex: Sanitaire)', 'type' => 'text', 'required' => true],
+            'slug' => ['label' => 'Slug CSS (ex: sanitaire)', 'type' => 'text', 'required' => true]
+        ]
+    ],
+    'project_categories' => [
+        'name' => 'Catégories de Réalisations (Portfolio)',
+        'pk' => 'id',
+        'can_add' => true, 'can_delete' => true,
+        'fields' => [
+            'name' => ['label' => 'Nom de la catégorie (ex: Douche à l\'italienne)', 'type' => 'text', 'required' => true],
+            'slug' => ['label' => 'Slug CSS (ex: douche-italienne)', 'type' => 'text', 'required' => true]
+        ]
+    ],
+    // --- FIN NOUVELLES TABLES ---
     'projects' => [
         'name' => 'Réalisations (Portfolio)',
         'pk' => 'id',
@@ -80,8 +118,22 @@ $tablesConfig = [
         'fields' => [
             'title' => ['label' => 'Titre du chantier', 'type' => 'text', 'required' => true],
             'city' => ['label' => 'Ville', 'type' => 'text'],
-            'category' => ['label' => 'Catégorie Principale', 'type' => 'text', 'required' => true, 'help' => 'Ex: Chauffage, Sanitaire, Adoucisseur (Sert pour les filtres)'],
-            'type_intervention' => ['label' => 'Type d\'intervention', 'type' => 'text', 'help' => 'Ex: Nouvelle installation, Remplacement, Dépannage'],
+            'type_intervention_id' => [
+                'label' => 'Domaine (Type d\'intervention)',
+                'type' => 'select_db',
+                'table' => 'intervention_types',
+                'key' => 'id',
+                'display' => 'name',
+                'required' => true
+            ],
+            'category_id' => [
+                'label' => 'Élément (Catégorie)',
+                'type' => 'select_db',
+                'table' => 'project_categories',
+                'key' => 'id',
+                'display' => 'name',
+                'required' => true
+            ],
             'date_completion' => ['label' => 'Date de fin de chantier', 'type' => 'date'],
             'image_url' => [
                 'label' => 'Photo principale du chantier',
@@ -104,7 +156,22 @@ $tablesConfig = [
         'can_add' => true, 'can_delete' => true,
         'fields' => [
             'name' => ['label' => 'Nom du produit', 'type' => 'text', 'required' => true, 'help' => 'Ex: Vitodens 200-W'],
-            'category' => ['label' => 'Catégorie', 'type' => 'text', 'required' => true, 'help' => 'Ex: Chaudières, Pompes à chaleur, Adoucisseurs'],
+            'type_id' => [
+                'label' => 'Domaine (Type)',
+                'type' => 'select_db',
+                'table' => 'product_types',
+                'key' => 'id',
+                'display' => 'name',
+                'required' => true
+            ],
+            'category_id' => [
+                'label' => 'Élément (Catégorie)',
+                'type' => 'select_db',
+                'table' => 'product_categories',
+                'key' => 'id',
+                'display' => 'name',
+                'required' => true
+            ],
             'brand' => ['label' => 'Marque', 'type' => 'text', 'help' => 'Ex: Viessmann, BWT, Bulex'],
             'image_url' => [
                 'label' => 'Image du produit',
@@ -220,13 +287,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         $fileName = $_FILES[$f]['name'];
                         $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-                        // Ajout du support PDF
                         $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf'];
 
                         $finfo = finfo_open(FILEINFO_MIME_TYPE);
                         $mimeType = finfo_file($finfo, $tmpName);
                         finfo_close($finfo);
-                        // Ajout du support PDF
                         $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 
                         if (in_array($ext, $allowedExtensions) && in_array($mimeType, $allowedMimeTypes)) {
@@ -317,7 +382,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
 
-            // GESTION NORMALE DES TEXTES / NOMBRES / DATES
+            // GESTION NORMALE DES TEXTES / NOMBRES / DATES / SELECT_DB
             $val = isset($_POST[$f]) && trim($_POST[$f]) !== '' ? trim($_POST[$f]) : null;
             $data[] = $val;
             $insertFields[] = $f; $placeholders[] = '?'; $updateStr[] = "$f = ?";
@@ -358,8 +423,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .readonly-field { background-color: #e9ecef; cursor: not-allowed; border: 1px solid #ced4da; }
         .required-asterisk { color: #dc3545; font-weight: bold; margin-left: 3px; }
         .form-group label { font-weight: 600; display: block; margin-bottom: 8px; color: #333; }
-        input[type="text"], input[type="number"], input[type="date"], input[type="email"], input[type="password"], textarea {
-            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; font-size: 1rem; box-sizing: border-box;
+        input[type="text"], input[type="number"], input[type="date"], input[type="email"], input[type="password"], textarea, select {
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; font-size: 1rem; box-sizing: border-box; background: #fff;
         }
     </style>
 </head>
@@ -419,6 +484,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         <?php if ($actualType === 'textarea'): ?>
                             <textarea name="<?= $key ?>" rows="5" <?= $isReadonly ? 'readonly class="readonly-field"' : '' ?> <?= $isRequired ? 'required' : '' ?>><?= htmlspecialchars($item[$key] ?? '') ?></textarea>
+
+                        <?php elseif ($actualType === 'select_db'):
+                            $stmtOpt = $pdo->query("SELECT {$fieldConfig['key']}, {$fieldConfig['display']} FROM {$fieldConfig['table']} ORDER BY {$fieldConfig['display']} ASC");
+                            $options = $stmtOpt->fetchAll(PDO::FETCH_ASSOC);
+                            ?>
+                            <select name="<?= $key ?>" <?= $isRequired ? 'required' : '' ?> <?= $isReadonly ? 'disabled' : '' ?>>
+                                <option value="">-- Sélectionner --</option>
+                                <?php foreach ($options as $opt): ?>
+                                    <option value="<?= htmlspecialchars($opt[$fieldConfig['key']]) ?>" <?= (isset($item[$key]) && $item[$key] == $opt[$fieldConfig['key']]) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($opt[$fieldConfig['display']]) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
 
                         <?php elseif ($actualType === 'file'): ?>
                             <?php if (!empty($item[$key])): ?>
@@ -519,17 +597,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $actualType = $v['type'] === 'dynamic' ? ($row['setting_type'] ?? 'text') : $v['type'];
 
                                 echo "<td style='padding: 15px; vertical-align: middle; color: #444;'>";
+
                                 if ($actualType === 'file' && !empty($val)) {
                                     if(strtolower(pathinfo($val, PATHINFO_EXTENSION)) === 'pdf') {
                                         echo "<a href='../public/" . htmlspecialchars($val) . "' target='_blank' title='Voir le PDF'><i class='fas fa-file-pdf' style='color:#dc3545; font-size:1.8rem;'></i></a>";
                                     } else {
                                         echo "<img src='../public/" . htmlspecialchars($val) . "' style='height: 45px; width: auto; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.15); display:block;'>";
                                     }
+                                } elseif ($actualType === 'select_db' && !empty($val)) {
+                                    // Requête de résolution de la clé étrangère pour le tableau d'administration
+                                    $stmtName = $pdo->prepare("SELECT {$v['display']} FROM {$v['table']} WHERE {$v['key']} = ?");
+                                    $stmtName->execute([$val]);
+                                    $resolvedName = $stmtName->fetchColumn();
+                                    echo htmlspecialchars($resolvedName ?: 'Non lié');
                                 } elseif ($actualType === 'date' && !empty($val)) {
                                     echo date('d/m/Y', strtotime($val));
                                 } else {
-                                    if (strlen($val) > 60) $val = substr($val, 0, 60) . '...';
-                                    echo htmlspecialchars($val);
+                                    if (strlen((string)$val) > 60) $val = substr((string)$val, 0, 60) . '...';
+                                    echo htmlspecialchars((string)$val);
                                 }
                                 echo "</td>";
                             }

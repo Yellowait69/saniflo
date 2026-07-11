@@ -38,8 +38,23 @@ $table = $_GET['table'] ?? '';
         <a href="content.php?table=pricing" class="<?= ($page === 'content.php' && $table === 'pricing') ? 'active' : '' ?>">Tarifs</a>
         <a href="content.php?table=team" class="<?= ($page === 'content.php' && $table === 'team') ? 'active' : '' ?>">Équipe</a>
         <a href="content.php?table=certifications" class="<?= ($page === 'content.php' && $table === 'certifications') ? 'active' : '' ?>">Agréments</a>
+
         <a href="content.php?table=products" class="<?= ($page === 'content.php' && $table === 'products') ? 'active' : '' ?>">Produits</a>
+        <a href="content.php?table=product_categories" class="<?= ($page === 'content.php' && $table === 'product_categories') ? 'active' : '' ?>" style="font-size: 0.9em; opacity: 0.9;">
+            <i class="fas fa-tags" style="font-size:0.8em; margin-right:3px;"></i> Cat. Produits
+        </a>
+        <a href="content.php?table=product_types" class="<?= ($page === 'content.php' && $table === 'product_types') ? 'active' : '' ?>" style="font-size: 0.9em; opacity: 0.9;">
+            <i class="fas fa-wrench" style="font-size:0.8em; margin-right:3px;"></i> Types Produits
+        </a>
+
         <a href="content.php?table=projects" class="<?= ($page === 'content.php' && $table === 'projects') ? 'active' : '' ?>">Portfolio</a>
+        <a href="content.php?table=project_categories" class="<?= ($page === 'content.php' && $table === 'project_categories') ? 'active' : '' ?>" style="font-size: 0.9em; opacity: 0.9;">
+            <i class="fas fa-tags" style="font-size:0.8em; margin-right:3px;"></i> Cat. Portfolio
+        </a>
+        <a href="content.php?table=intervention_types" class="<?= ($page === 'content.php' && $table === 'intervention_types') ? 'active' : '' ?>" style="font-size: 0.9em; opacity: 0.9;">
+            <i class="fas fa-wrench" style="font-size:0.8em; margin-right:3px;"></i> Types Portfolio
+        </a>
+
         <a href="content.php?table=users" class="<?= ($page === 'content.php' && $table === 'users') ? 'active' : '' ?>">Admins</a>
 
         <a href="../" target="_blank" style="margin-left: 50px; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 20px; border-bottom:none; opacity:0.9; font-size:0.9rem;">

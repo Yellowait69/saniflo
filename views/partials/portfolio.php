@@ -1,3 +1,10 @@
+<?php
+// Sécurité anti-erreur si les variables n'existent pas encore
+if (!isset($projects)) $projects = [];
+if (!isset($projectCategories)) $projectCategories = [];
+if (!isset($interventionTypes)) $interventionTypes = [];
+?>
+
 <section id="realisations" class="portfolio-section">
     <div class="container">
         <div class="section-title">
@@ -5,19 +12,24 @@
             <p>Découvrez nos derniers chantiers : du dépannage rapide à l'installation complète.</p>
         </div>
 
-        <div class="portfolio-filters">
-            <button class="filter-btn active" data-filter="all">
-                <i class="fas fa-th-large"></i> Tous nos chantiers
+        <div class="portfolio-filters" id="portfolioTypeFilters">
+            <button class="filter-btn-type active" data-type="all">
+                <i class="fas fa-th-large"></i> Tous nos domaines
             </button>
-            <button class="filter-btn" data-filter="adoucisseur">
-                <i class="fas fa-tint"></i> Adoucisseurs
-            </button>
-            <button class="filter-btn" data-filter="chauffage">
-                <i class="fas fa-fire"></i> Chauffage & Chaudières
-            </button>
-            <button class="filter-btn" data-filter="sanitaire">
-                <i class="fas fa-bath"></i> Sanitaire
-            </button>
+            <?php foreach ($interventionTypes as $type): ?>
+                <button class="filter-btn-type" data-type="<?= htmlspecialchars($type['slug']) ?>">
+                    <?= htmlspecialchars($type['name']) ?>
+                </button>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="portfolio-filters sub-filters-container" id="portfolioCatFilters" style="margin-top: -30px; margin-bottom: 40px; gap: 8px;">
+            <button class="filter-btn-cat active" data-cat="all">Toutes les catégories</button>
+            <?php foreach ($projectCategories as $cat): ?>
+                <button class="filter-btn-cat" data-cat="<?= htmlspecialchars($cat['slug']) ?>">
+                    <?= htmlspecialchars($cat['name']) ?>
+                </button>
+            <?php endforeach; ?>
         </div>
 
         <?php if (!empty($projects)): ?>
@@ -25,22 +37,11 @@
                 <?php foreach ($projects as $proj):
                     $date = !empty($proj['date_completion']) ? date('d/m/Y', strtotime($proj['date_completion'])) : '';
 
-                    // Classification purement technique pour le filtrage JS
-                    $catLower = strtolower(trim($proj['category'] ?? ''));
-                    if (strpos($catLower, 'adoucisseur') !== false) {
-                        $filterClass = 'adoucisseur';
-                    }
-                    elseif (strpos($catLower, 'chauffage') !== false || strpos($catLower, 'energie') !== false || strpos($catLower, 'chaudière') !== false) {
-                        $filterClass = 'chauffage';
-                    }
-                    elseif (strpos($catLower, 'sanitaire') !== false || strpos($catLower, 'bain') !== false) {
-                        $filterClass = 'sanitaire';
-                    }
-                    else {
-                        $filterClass = 'autre';
-                    }
+                    // Extraction des slugs pour le filtrage Javascript
+                    $catSlug = htmlspecialchars($proj['category_slug'] ?? 'autre');
+                    $typeSlug = htmlspecialchars($proj['type_slug'] ?? 'autre');
 
-                    // PRÉPARATION DES DONNÉES POUR LA FENÊTRE MODALE (Galerie multiple anticipée)
+                    // PRÉPARATION DES DONNÉES POUR LA FENÊTRE MODALE
                     $imagesArray = [$proj['image_url']];
                     if (!empty($proj['galerie_images'])) {
                         $extraImages = json_decode($proj['galerie_images'], true);
@@ -50,18 +51,20 @@
                     }
                     $imagesJson = htmlspecialchars(json_encode($imagesArray), ENT_QUOTES, 'UTF-8');
 
-                    // Préparation des métadonnées (en bleu) pour la modale
+                    // Préparation des métadonnées
                     $metaHtml = '';
                     if(!empty($proj['city'])) $metaHtml .= "<span class='meta-item text-primary'><i class='fas fa-map-marker-alt'></i> " . htmlspecialchars($proj['city']) . "</span>";
                     if($date) $metaHtml .= "<span class='meta-item text-primary'><i class='fas fa-calendar-check'></i> {$date}</span>";
                     ?>
 
-                    <div class="portfolio-card filter-item <?= $filterClass ?>"
+                    <div class="portfolio-card filter-item"
+                         data-type-slug="<?= $typeSlug ?>"
+                         data-cat-slug="<?= $catSlug ?>"
                          data-title="<?= htmlspecialchars($proj['title'], ENT_QUOTES) ?>"
                          data-desc="<?= htmlspecialchars($proj['description'], ENT_QUOTES) ?>"
                          data-meta="<?= htmlspecialchars($metaHtml, ENT_QUOTES) ?>"
                          data-images="<?= $imagesJson ?>"
-                         data-cat="<?= htmlspecialchars($proj['category'] ?? '', ENT_QUOTES) ?>">
+                         data-cat="<?= htmlspecialchars($proj['category_name'] ?? '', ENT_QUOTES) ?>">
 
                         <div class="portfolio-img-wrapper">
                             <img src="<?= htmlspecialchars($proj['image_url']) ?>" alt="<?= htmlspecialchars($proj['title']) ?>" loading="lazy" class="portfolio-img">
@@ -71,15 +74,15 @@
                                 <span>Voir les détails</span>
                             </div>
 
-                            <?php if(!empty($proj['category'])): ?>
+                            <?php if(!empty($proj['category_name'])): ?>
                                 <span class="portfolio-badge badge-category badge-primary">
-                                    <?= htmlspecialchars($proj['category']) ?>
+                                    <?= htmlspecialchars($proj['category_name']) ?>
                                 </span>
                             <?php endif; ?>
 
-                            <?php if(!empty($proj['type_intervention'])): ?>
+                            <?php if(!empty($proj['type_name'])): ?>
                                 <span class="portfolio-badge badge-type badge-secondary">
-                                    <i class="fas fa-tools"></i> <?= htmlspecialchars($proj['type_intervention']) ?>
+                                    <i class="fas fa-tools"></i> <?= htmlspecialchars($proj['type_name']) ?>
                                 </span>
                             <?php endif; ?>
                         </div>
@@ -96,7 +99,7 @@
             </div>
 
             <div class="load-more-container">
-                <button id="loadMoreBtn" class="btn-load-more" style="display: none;">
+                <button id="loadMorePortfolioBtn" class="btn-load-more" style="display: none;">
                     <i class="fas fa-sync-alt"></i> Voir plus de chantiers
                 </button>
             </div>
@@ -150,11 +153,16 @@
         .section-title h2::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); width: 60px; height: 4px; background: #0056b3; border-radius: 2px; }
         .section-title p { color: #6c757d; font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
 
-        /* Filtres en bleu */
+        /* Filtres Principaux */
         .portfolio-filters { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-bottom: 50px; }
-        .filter-btn { background: #fff; border: 2px solid #0056b3; color: #0056b3; padding: 10px 22px; border-radius: 50px; cursor: pointer; font-weight: 600; font-size: 0.95rem; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .filter-btn:hover { background: #eef5fc; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0, 86, 179, 0.1); }
-        .filter-btn.active { background: #0056b3; border-color: #0056b3; color: #ffffff; box-shadow: 0 4px 12px rgba(0, 86, 179, 0.3); }
+        .filter-btn-type { background: #fff; border: 2px solid #0056b3; color: #0056b3; padding: 10px 22px; border-radius: 50px; cursor: pointer; font-weight: 600; font-size: 0.95rem; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .filter-btn-type:hover { background: #eef5fc; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0, 86, 179, 0.1); }
+        .filter-btn-type.active { background: #0056b3; border-color: #0056b3; color: #ffffff; box-shadow: 0 4px 12px rgba(0, 86, 179, 0.3); }
+
+        /* Sous-filtres (Catégories) */
+        .filter-btn-cat { background: #eef5fc; border: 1px solid #cce5ff; color: #0056b3; padding: 6px 18px; border-radius: 30px; cursor: pointer; font-weight: 500; font-size: 0.85rem; transition: all 0.2s ease; }
+        .filter-btn-cat:hover { background: #ddecff; border-color: #b8daff; }
+        .filter-btn-cat.active { background: #0056b3; color: #ffffff; border-color: #0056b3; font-weight: 600; }
 
         /* Grille & Cartes */
         .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 35px; }
@@ -170,23 +178,20 @@
         .portfolio-card:hover .portfolio-overlay i { transform: translateY(0); }
         .portfolio-card:hover .portfolio-img { transform: scale(1.08); }
 
-        /* Badges (Pilules) toutes en thématique bleue */
+        /* Badges */
         .portfolio-badge { position: absolute; padding: 6px 14px; border-radius: 30px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: white; box-shadow: 0 4px 10px rgba(0, 86, 179, 0.2); z-index: 2; }
         .badge-category { top: 15px; left: 15px; }
         .badge-type { top: 15px; right: 15px; }
-
         .badge-primary { background: linear-gradient(135deg, #007bff, #0056b3); }
-        .badge-secondary { background: rgba(0, 51, 102, 0.95); backdrop-filter: blur(4px); } /* Bleu très foncé pour contraster */
+        .badge-secondary { background: rgba(0, 51, 102, 0.95); backdrop-filter: blur(4px); }
 
         /* Contenu Carte */
         .portfolio-content { padding: 25px; flex-grow: 1; display: flex; flex-direction: column; }
         .portfolio-title { margin: 0 0 15px 0; font-size: 1.25rem; color: #003366; font-weight: 700; line-height: 1.3; transition: color 0.3s; }
         .portfolio-card:hover .portfolio-title { color: #0056b3; }
-
         .portfolio-meta { display: flex; gap: 15px; flex-wrap: wrap; font-size: 0.85rem; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 15px; }
         .meta-item { display: flex; align-items: center; gap: 6px; }
         .text-primary { color: #0056b3; }
-
         .portfolio-desc { color: #555; font-size: 0.95rem; line-height: 1.6; margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
         /* Bouton Load More */
@@ -194,7 +199,7 @@
         .btn-load-more { background: transparent; color: #0056b3; border: 2px solid #0056b3; padding: 12px 35px; font-size: 1.05rem; font-weight: 700; border-radius: 50px; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 10px; }
         .btn-load-more:hover { background: #0056b3; color: #fff; transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0, 86, 179, 0.2); }
 
-        /* --- STYLES DE LA MODALE --- */
+        /* Styles Modale */
         .portfolio-modal { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0, 20, 50, 0.9); backdrop-filter: blur(5px); align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; }
         .portfolio-modal.show { display: flex; opacity: 1; }
         .modal-content { background: #fff; border-radius: 12px; width: 95%; max-width: 1000px; max-height: 90vh; position: relative; display: flex; flex-direction: column; overflow: hidden; transform: translateY(20px); transition: transform 0.3s ease; box-shadow: 0 25px 50px rgba(0,0,0,0.3); }
@@ -218,7 +223,6 @@
         .modal-main-img-container { flex-grow: 1; display: flex; align-items: center; justify-content: center; padding: 0; background: #001224; min-height: 300px; }
         .modal-main-img-container img { width: 100%; height: 100%; max-height: 60vh; object-fit: contain; }
 
-        /* Galerie de miniatures */
         .modal-thumbnails { display: flex; gap: 10px; padding: 15px; background: #002244; overflow-x: auto; }
         .thumb-img { width: 80px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer; opacity: 0.5; transition: 0.2s; border: 2px solid transparent; }
         .thumb-img:hover { opacity: 0.8; }
@@ -232,88 +236,123 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- 1. GESTION DU FILTRE ET DU "VOIR PLUS" ---
-            const filterBtns = document.querySelectorAll('.filter-btn');
-            const portfolioItems = Array.from(document.querySelectorAll('.filter-item'));
-            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            // --- GESTION DU FILTRAGE À DEUX NIVEAUX (DYNAMIQUE) ---
+            const typeBtns = document.querySelectorAll('#portfolioTypeFilters .filter-btn-type');
+            const catBtns = document.querySelectorAll('#portfolioCatFilters .filter-btn-cat');
+            const portfolioItems = Array.from(document.querySelectorAll('#portfolioGrid .portfolio-card'));
+            const loadMoreBtn = document.getElementById('loadMorePortfolioBtn');
+            const catContainer = document.getElementById('portfolioCatFilters');
 
-            let currentFilter = 'all';
-            let limitPerCat = 3;
-            let currentGlobalLimit = 9;
+            let currentType = 'all';
+            let currentCat = 'all';
+            let globalLimit = 6; // On affiche 6 cartes par défaut
 
             function updateDisplay() {
-                let catCounters = { 'adoucisseur': 0, 'chauffage': 0, 'sanitaire': 0, 'autre': 0 };
                 let totalVisible = 0;
-                let hiddenMatchingFilter = 0;
+                let hiddenMatching = 0;
 
                 portfolioItems.forEach(item => {
-                    let cat = ['adoucisseur', 'chauffage', 'sanitaire'].find(c => item.classList.contains(c)) || 'autre';
-                    let matchesFilter = (currentFilter === 'all' || item.classList.contains(currentFilter));
+                    let itemType = item.getAttribute('data-type-slug');
+                    let itemCat = item.getAttribute('data-cat-slug');
 
-                    if (matchesFilter) {
-                        let canShow = false;
+                    let matchType = (currentType === 'all' || itemType === currentType);
+                    let matchCat = (currentCat === 'all' || itemCat === currentCat);
 
-                        if (currentFilter === 'all') {
-                            if (catCounters[cat] < limitPerCat) {
-                                canShow = true;
-                                catCounters[cat]++;
-                            }
-                        } else {
-                            if (totalVisible < currentGlobalLimit) {
-                                canShow = true;
-                            }
-                        }
-
-                        if (canShow) {
+                    if (matchType && matchCat) {
+                        if (totalVisible < globalLimit) {
                             if (item.style.display !== 'flex') {
                                 item.style.display = 'flex';
                                 item.style.animation = 'none';
-                                item.offsetHeight;
+                                item.offsetHeight; // Reflow
                                 item.style.animation = 'fadeIn 0.5s ease forwards';
                             }
                             totalVisible++;
                         } else {
                             item.style.display = 'none';
-                            hiddenMatchingFilter++;
+                            hiddenMatching++;
                         }
                     } else {
                         item.style.display = 'none';
                     }
                 });
 
-                if (hiddenMatchingFilter > 0) {
-                    loadMoreBtn.style.display = 'inline-flex';
-                } else {
-                    loadMoreBtn.style.display = 'none';
+                if (loadMoreBtn) {
+                    loadMoreBtn.style.display = hiddenMatching > 0 ? 'inline-flex' : 'none';
                 }
             }
 
-            filterBtns.forEach(btn => {
+            // Événement clic sur le TYPE (Domaine)
+            typeBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
-                    filterBtns.forEach(b => b.classList.remove('active'));
+                    // Mettre à jour l'apparence des boutons Type
+                    typeBtns.forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
-                    currentFilter = btn.getAttribute('data-filter');
+                    currentType = btn.getAttribute('data-type');
 
-                    limitPerCat = 3;
-                    currentGlobalLimit = 9;
+                    // Déduire quelles catégories sont disponibles pour ce type précis
+                    let validCats = new Set();
+                    portfolioItems.forEach(item => {
+                        if (currentType === 'all' || item.getAttribute('data-type-slug') === currentType) {
+                            validCats.add(item.getAttribute('data-cat-slug'));
+                        }
+                    });
+
+                    // Afficher/Cacher les boutons de catégories
+                    let catsAvailable = 0;
+                    catBtns.forEach(cBtn => {
+                        let cSlug = cBtn.getAttribute('data-cat');
+                        if (cSlug === 'all') return; // Le bouton "Toutes" reste toujours là
+
+                        if (validCats.has(cSlug)) {
+                            cBtn.style.display = 'inline-flex';
+                            catsAvailable++;
+                        } else {
+                            cBtn.style.display = 'none';
+                        }
+                    });
+
+                    // Si on a choisi un type spécifique et qu'il y a des catégories, on montre la ligne
+                    if(currentType !== 'all' && catsAvailable > 0) {
+                        catContainer.style.display = 'flex';
+                    } else {
+                        catContainer.style.display = 'none';
+                    }
+
+                    // Réinitialiser la catégorie sélectionnée à "Toutes"
+                    catBtns.forEach(b => b.classList.remove('active'));
+                    document.querySelector('#portfolioCatFilters .filter-btn-cat[data-cat="all"]').classList.add('active');
+                    currentCat = 'all';
+
+                    globalLimit = 6;
                     updateDisplay();
                 });
             });
 
+            // Événement clic sur la CATÉGORIE (Élément)
+            catBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    catBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentCat = btn.getAttribute('data-cat');
+
+                    globalLimit = 6;
+                    updateDisplay();
+                });
+            });
+
+            // Bouton Voir Plus
             if(loadMoreBtn) {
                 loadMoreBtn.addEventListener('click', () => {
-                    if (currentFilter === 'all') {
-                        limitPerCat += 3;
-                    } else {
-                        currentGlobalLimit += 9;
-                    }
+                    globalLimit += 6;
                     updateDisplay();
                 });
             }
 
+            // Init au chargement (on cache la ligne des catégories tant qu'aucun type n'est cliqué)
+            catContainer.style.display = 'none';
             updateDisplay();
 
-            // --- 2. GESTION DE LA FENÊTRE MODALE ---
+            // --- GESTION DE LA FENÊTRE MODALE ---
             const modal = document.getElementById('portfolioModal');
             const closeModalBtn = document.querySelector('.close-modal');
 

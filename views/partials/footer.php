@@ -10,11 +10,10 @@
             <div class="footer-col links-col">
                 <h4>Navigation</h4>
                 <ul>
-                    <li><a href="https://saniflo.sechauffermoinscher.be/actions/fr/devis" target="_blank">Demande de Devis</a></li>
-                    <!-- Modification ici : href="#" pour remonter en haut -->
-                    <li><a href="#">Accueil</a></li>
+                    <li><a href="index.php#accueil">Accueil</a></li>
                     <li><a href="index.php#apropos">À Propos</a></li>
                     <li><a href="index.php#services">Services</a></li>
+                    <li><a href="index.php#produits">Produits</a></li>
                     <li><a href="index.php#realisations">Réalisations</a></li>
                     <li><a href="index.php?page=reservation#devis-wizard">Prendre Rendez-vous</a></li>
                     <li><a href="index.php?page=contact#contact-section">Contact</a></li>
