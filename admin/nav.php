@@ -56,11 +56,11 @@ $isConfigOpen = in_array($table, ['site_content', 'settings', 'team', 'certifica
             </div>
         </div>
 
-        <a href="../" target="_blank" style="margin-top: 25px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px; opacity:0.8; font-size:0.9rem;">
-            <i class="fas fa-external-link-alt" style="margin-right:8px;"></i> Voir le site web
+        <a href="../" target="_blank" class="site-link-btn">
+            <i class="fas fa-external-link-alt" style="margin-right:8px;"></i> Voir le site
         </a>
 
-        <a href="logout.php" class="logout-btn" style="margin-top: 10px;">
+        <a href="logout.php" class="logout-btn">
             <i class="fas fa-sign-out-alt" style="margin-right:8px;"></i> Déconnexion
         </a>
     </nav>
